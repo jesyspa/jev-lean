@@ -2,7 +2,7 @@
 
 Experiments on Jev-guided Lean proof search. Lean generates or executes concrete actions and remains the sole correctness oracle; Jev is evaluated as a ranker of promising proof steps.
 
-`jev?` is now a small Lean-native closing tactic. It generates local `exact` actions and bounded standard automation, checks each from a restored tactic state, and emits a replayable `Try this` replacement. It only accepts actions that close every current goal. The external `python3 -m jevlean.rank` command ranks caller-supplied action identifiers with Jev and uses catalogue order if credentials, execution, or response validation fail.
+`jev?` is now a bounded Lean-native successor search. Each frontier node retains a restorable tactic state, ordered goals, replayable path, depth, and cost. Expansion applies `intro`, `constructor`, local `exact`/`apply`, or bounded closing automation to the first goal and preserves sibling order. The external `python3 -m jevlean.rank` command ranks each node's concrete actions with Jev and uses catalogue order if credentials, execution, or response validation fail. A closing path is replayed and emitted as raw ordinary tactic source through `Try this`.
 
 ## Results so far
 

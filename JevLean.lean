@@ -18,42 +18,67 @@ open Lean Elab Tactic Meta
 structure Action where
   tacticSyntax : TSyntax `tactic
   text : String
+  cost : Nat := 1
 
-/-- The goals remaining after applying one action to a proof state. -/
-structure Successor where
-  action : Action
+/-- A restorable search node. Goals retain Lean's active-goal order. -/
+structure Node where
+  state : Lean.Elab.Tactic.SavedState
   goals : List MVarId
+  path : List Action
+  depth : Nat
+  cost : Nat
 
-/-- All locally checked transitions considered for one proof state. -/
-structure SearchResult where
-  successors : List Successor
+/-- Deterministic limits for the Lean-native frontier. -/
+structure Config where
+  maxDepth : Nat := 6
+  maxCost : Nat := 6
+  maxExpanded : Nat := 64
 
-private def standardActions : TacticM (List Action) := do
+/-- A seam used by tests and alternative bounded action generators. -/
+abbrev ActionSource := TacticM (List Action)
+
+/-- A seam used to replace the external ranker while retaining the same scheduler. -/
+abbrev ActionRanker := List Action → TacticM (List Action)
+
+private partial def freshIntroName (used : List Name) (index : Nat := 0) : Name :=
+  let candidate := Name.mkSimple <| if index == 0 then "jev_h" else s!"jev_h{index}"
+  if used.contains candidate then freshIntroName used (index + 1) else candidate
+
+private def structuralActions : TacticM (List Action) := do
+  let used := (← getLCtx).foldl (init := []) fun names decl => decl.userName :: names
+  let introName := freshIntroName used
+  let ident := mkIdent introName
   pure [
-    { tacticSyntax := ← `(tactic| all_goals rfl), text := "all_goals rfl" },
-    { tacticSyntax := ← `(tactic| all_goals assumption), text := "all_goals assumption" },
-    { tacticSyntax := ← `(tactic| all_goals simp), text := "all_goals simp" },
-    { tacticSyntax := ← `(tactic| all_goals omega), text := "all_goals omega" },
-    { tacticSyntax := ← `(tactic| all_goals norm_num), text := "all_goals norm_num" },
-    { tacticSyntax := ← `(tactic| all_goals aesop (config := { terminal := true, maxRuleApplications := 32 })),
-      text := "all_goals aesop (config := { terminal := true, maxRuleApplications := 32 })" }
+    { tacticSyntax := ← `(tactic| intro $(ident):ident), text := s!"intro {introName}" },
+    { tacticSyntax := ← `(tactic| constructor), text := "constructor" }
   ]
 
-private def localExactActions : TacticM (List Action) := do
+private def closingActions : TacticM (List Action) := do
+  pure [
+    { tacticSyntax := ← `(tactic| rfl), text := "rfl" },
+    { tacticSyntax := ← `(tactic| assumption), text := "assumption" },
+    { tacticSyntax := ← `(tactic| simp), text := "simp" },
+    { tacticSyntax := ← `(tactic| omega), text := "omega" },
+    { tacticSyntax := ← `(tactic| norm_num), text := "norm_num" },
+    { tacticSyntax := ← `(tactic| aesop (config := { terminal := true, maxRuleApplications := 32 })),
+      text := "aesop (config := { terminal := true, maxRuleApplications := 32 })" }
+  ]
+
+private def localActions : TacticM (List Action) := do
   let lctx ← getLCtx
   lctx.foldlM (init := []) fun actions decl => do
     if decl.isImplementationDetail || decl.userName.isAnonymous then
       pure actions
     else
       let ident := mkIdent decl.userName
-      pure (actions.concat {
-        tacticSyntax := ← `(tactic| all_goals exact $ident)
-        text := s!"all_goals exact {decl.userName}"
-      })
+      pure (actions ++ [
+        { tacticSyntax := ← `(tactic| exact $ident), text := s!"exact {decl.userName}" },
+        { tacticSyntax := ← `(tactic| apply $ident), text := s!"apply {decl.userName}" }
+      ])
 
-/-- Build the finite, syntax-safe action catalogue for the current tactic state. -/
+/-- Build the finite, syntax-safe action catalogue for the current active goal. -/
 def catalogue : TacticM (List Action) := do
-  return (← localExactActions) ++ (← standardActions)
+  return (← structuralActions) ++ (← localActions) ++ (← closingActions)
 
 /-- Ask the external ranker to order fixed catalogue entries, retaining local order on failure. -/
 def rank (actions : List Action) : TacticM (List Action) := do
@@ -75,33 +100,80 @@ def rank (actions : List Action) : TacticM (List Action) := do
     return ranked
   catch _ => return actions
 
-/-- Run each action from the same saved state and retain its successor goals. -/
-def explore (actions : List Action) : TacticM SearchResult := do
-  let initial ← saveState
+/-- Capture the current tactic state as the root of a search. -/
+def initialNode : TacticM Node := do
+  let goals ← getUnsolvedGoals
+  return { state := ← saveState, goals, path := [], depth := 0, cost := 0 }
+
+/-- Restore both Lean's metavariable state and the node's ordered active goals. -/
+def Node.restore (node : Node) : TacticM Unit := do
+  node.state.restore
+  setGoals node.goals
+
+/-- Try every action on only the first active goal, then reattach untouched siblings. -/
+def expand (node : Node) (actions : List Action) : TacticM (List Node) := do
+  let original ← saveState
   let mut successors := []
   for action in actions do
-    restoreState initial
-    try
-      evalTactic action.tacticSyntax
-      successors := successors.concat { action, goals := ← getUnsolvedGoals }
-    catch _ => pure ()
-  restoreState initial
-  return { successors }
+    node.restore
+    match node.goals with
+    | [] => pure ()
+    | goal :: siblings =>
+      setGoals [goal]
+      try
+        withMainContext do evalTactic action.tacticSyntax
+        let descendants ← getUnsolvedGoals
+        setGoals (descendants ++ siblings)
+        let goals ← getUnsolvedGoals
+        successors := successors.concat {
+          state := ← saveState
+          goals
+          path := node.path.concat action
+          depth := node.depth + 1
+          cost := node.cost + action.cost
+        }
+      catch _ => pure ()
+  original.restore
+  return successors
 
-/-- Commit a transition only when it closes every goal from the original state. -/
-def firstClosing (result : SearchResult) : Option Successor :=
-  result.successors.find? fun successor => successor.goals.isEmpty
+/-- Bounded breadth-first successor exploration with injectable actions and ranking. -/
+def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) := do
+  let original ← saveState
+  let root ← initialNode
+  let rec visit (frontier : List Node) (fuel : Nat) : TacticM (Option Node) := do
+    match fuel, frontier with
+    | 0, _ | _, [] => return none
+    | fuel + 1, node :: rest =>
+      if node.goals.isEmpty then return some node
+      if node.depth >= config.maxDepth || node.cost >= config.maxCost then
+        visit rest fuel
+      else
+        node.restore
+        let actions ← withMainContext do ranker (← source)
+        let successors ← expand node actions
+        let successors := successors.filter fun successor =>
+          successor.depth <= config.maxDepth && successor.cost <= config.maxCost
+        if let some closed := successors.find? fun successor => successor.goals.isEmpty then
+          return some closed
+        visit (rest ++ successors) fuel
+  try
+    visit [root] config.maxExpanded
+  finally
+    original.restore
+
+/-- Replay a path as ordinary tactic source on Lean's current ordered goals. -/
+def replay (path : List Action) : TacticM Unit := do
+  for action in path do
+    evalTactic action.tacticSyntax
 
 /-- Search ordinary locally generated actions and provide a replayable replacement. -/
 elab "jev?" : tactic => withMainContext do
-  let actions ← rank (← catalogue)
-  let result ← explore actions
-  match firstClosing result with
-  | none => throwError "jev? found no closing action in its bounded catalogue"
-  | some successor =>
-    evalTactic successor.action.tacticSyntax
+  match ← searchWith {} catalogue rank with
+  | none => throwError "jev? found no closing path in its bounded catalogue"
+  | some node =>
+    replay node.path
     Lean.Meta.Tactic.TryThis.addSuggestion (← getRef)
-      { suggestion := .string successor.action.text }
+      { suggestion := .string (String.intercalate "\n" (node.path.map (·.text))) }
 
 end Search
 
