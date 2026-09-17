@@ -37,6 +37,10 @@ class RankTests(unittest.TestCase):
         )
         self.assertEqual(rank(REQUEST, api_key="key"), (["A01", "A02"], "fallback"))
 
+    def test_explicit_complete_order_is_returned(self) -> None:
+        with patch.dict("os.environ", {"JEV_RANK_ORDER": "A02,A01"}, clear=False):
+            self.assertEqual(rank(REQUEST, api_key=""), (["A02", "A01"], "override"))
+
     def test_payload_only_exposes_catalogue_actions(self) -> None:
         criteria = payload(REQUEST["state"], REQUEST["actions"])["questions"]["ranking"]["criteria"]
         self.assertEqual(set(criteria), {"A01", "A02"})

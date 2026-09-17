@@ -68,6 +68,11 @@ def ranking_from_response(response: Any, ids: list[str]) -> list[str]:
 def rank(request: dict[str, Any], api_key: str | None = None) -> tuple[list[str], str]:
     state, actions = validate_request(request)
     ids = fallback(actions)
+    override = os.environ.get("JEV_RANK_ORDER")
+    if override:
+        supplied = override.split(",")
+        if set(supplied) == set(ids) and len(supplied) == len(ids):
+            return supplied, "override"
     key = os.environ.get("TYPESAFE_API_KEY", "") if api_key is None else api_key
     if not key:
         return ids, "fallback"
@@ -80,13 +85,17 @@ def rank(request: dict[str, Any], api_key: str | None = None) -> tuple[list[str]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Rank a fixed catalogue of Lean actions with Jev")
-    parser.parse_args()
+    parser.add_argument("--plain", action="store_true", help="write ranked identifiers one per line")
+    args = parser.parse_args()
     try:
         request = json.load(sys.stdin)
         ranking, source = rank(request)
     except (json.JSONDecodeError, ValueError) as error:
         raise SystemExit(f"invalid rank request: {error}")
-    print(json.dumps({"ranking": ranking, "source": source}, ensure_ascii=False))
+    if args.plain:
+        print("\\n".join(ranking))
+    else:
+        print(json.dumps({"ranking": ranking, "source": source}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -55,6 +55,24 @@ private def localExactActions : TacticM (List Action) := do
 def catalogue : TacticM (List Action) := do
   return (← localExactActions) ++ (← standardActions)
 
+/-- Ask the external ranker to order fixed catalogue entries, retaining local order on failure. -/
+def rank (actions : List Action) : TacticM (List Action) := do
+  let goal ← getMainGoal
+  let state := (← ppGoal goal).pretty
+  let entries := actions.enum.map fun (index, action) =>
+    Json.mkObj [("id", Json.str s!"A{index + 1}"), ("tactic", Json.str action.text)]
+  let request := Json.mkObj [("state", Json.str state), ("actions", Json.arr entries.toArray)]
+  try
+    let output ← IO.Process.output { cmd := "python3", args := #["-m", "jevlean.rank", "--plain"] } (some request.compress)
+    if output.exitCode != 0 then return actions
+    let indices := output.stdout.splitOn "\n" |>.filterMap fun line =>
+      if line.startsWith "A" then (line.drop 1).toNat? else none
+    if indices.length != actions.length || indices.eraseDups.length != actions.length ||
+        indices.any fun index => index == 0 || index > actions.length then
+      return actions
+    return indices.map fun index => actions[index - 1]!
+  catch _ => return actions
+
 /-- Run each action from the same saved state and retain its successor goals. -/
 def explore (actions : List Action) : TacticM SearchResult := do
   let initial ← saveState
@@ -74,7 +92,7 @@ def firstClosing (result : SearchResult) : Option Successor :=
 
 /-- Search ordinary locally generated actions and provide a replayable replacement. -/
 elab "jev?" : tactic => withMainContext do
-  let actions ← catalogue
+  let actions ← rank (← catalogue)
   let result ← explore actions
   match firstClosing result with
   | none => throwError "jev? found no closing action in its bounded catalogue"
