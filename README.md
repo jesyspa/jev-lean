@@ -2,7 +2,9 @@
 
 Experiments on Jev-guided Lean proof search. Lean generates or executes concrete actions and remains the sole correctness oracle; Jev is evaluated as a ranker of promising proof steps.
 
-`jev?` is now a bounded Lean-native successor search. Each frontier node retains a restorable tactic state, ordered goals, replayable path, depth, and cost. Expansion applies `intro`, `constructor`, local `exact`/`apply`, or bounded closing automation to the first goal and preserves sibling order. The external `python3 -m jevlean.rank` command ranks each node's concrete actions with Jev and uses catalogue order if credentials, execution, or response validation fail. A closing path is replayed and emitted as raw ordinary tactic source through `Try this`.
+`jev?` is a deterministic FIFO bounded Lean-native successor search. Each frontier node retains a restorable tactic state, ordered goals, replayable path, depth, and cost. Expansion applies `intro`, `constructor`, `left`/`right`, suitable-hypothesis `cases`, suitable-local `induction`, local `exact`/`apply`, and bounded closing automation to the first goal while preserving sibling order. The external `python3 -m jevlean.rank` command ranks concrete actions using the focused goal, pending sibling goals, and path context; invalid responses and exhausted Jev-call budgets use catalogue order. `aesop` remains a normal rankable candidate. A closing path is replayed and emitted as raw ordinary tactic source through `Try this`.
+
+The default practical ledger is depth 6, path cost 6, 64 frontier nodes, 256 scheduler heartbeats, 16 Jev calls, and 2 seconds of wall time. Wall time is checked only between transitions: Lean tactics and the ranker subprocess are not preemptible by this in-process kernel. Local suitability is deliberately shallow (`cases` on propositions and `induction` on non-proposition locals), and the catalogue has no premise retrieval, rewriting, generalization, or generated helper proofs.
 
 ## Results so far
 

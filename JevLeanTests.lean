@@ -8,11 +8,13 @@ private def controlledActions : ActionSource := do
     action.text.startsWith "intro " || action.text == "constructor" ||
       action.text.startsWith "exact " || action.text.startsWith "apply "
 
-private def identityRanker : ActionRanker := fun actions => pure actions
+private def identityRanker : ActionRanker := fun _ actions => pure actions
 
-private def aesopFirst : ActionRanker := fun actions =>
+private def aesopFirst : ActionRanker := fun _ actions =>
   pure <| actions.mergeSort fun left right =>
     left.text.startsWith "aesop" && !right.text.startsWith "aesop"
+
+private def reverseRanker : ActionRanker := fun _ actions => pure actions.reverse
 
 elab "jev_test_restoration" : tactic => withMainContext do
   let root ← initialNode
@@ -44,6 +46,23 @@ elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
     throwError "injected rank order was not respected"
   replay node.path
 
+elab "jev_test_nonclosing_retained" : tactic => withMainContext do
+  let root ← initialNode
+  let successors ← expand root (← controlledActions)
+  unless successors.any fun node => node.path.map (·.text) == ["intro jev_h"] && !node.goals.isEmpty do
+    throwError "a non-closing intro transition was discarded"
+  evalTactic (← `(tactic| intro h; exact h))
+
+elab "jev_test_budget_exhaustion" : tactic => withMainContext do
+  unless (← searchWith { maxNodes := 0 } controlledActions identityRanker).isNone do
+    throwError "node budget did not stop search cleanly"
+  let some fallback ← searchWith { maxJevCalls := 0, maxDepth := 2, maxCost := 2 }
+      controlledActions reverseRanker
+    | throwError "deterministic fallback found no path"
+  unless fallback.path.map (·.text) == ["intro jev_h", "exact jev_h"] do
+    throwError "rank-call exhaustion did not retain catalogue order"
+  evalTactic (← `(tactic| intro h; exact h))
+
 /-- Failed candidates leave the original proof state available to later candidates. -/
 example (P : Prop) (h : P) : P := by
   jev_test_restoration
@@ -51,6 +70,18 @@ example (P : Prop) (h : P) : P := by
 /-- Intro, constructor, and exact form a genuine four-step path with sibling goals. -/
 example (P : Prop) : P → P ∧ P := by
   jev_test_structural_path
+
+/-- A successful structural transition is retained even though it leaves a goal. -/
+example (P : Prop) : P → P := by
+  jev_test_nonclosing_retained
+
+/-- Exhausted node and rank-call budgets fail without mutating the caller state. -/
+example (P : Prop) : P → P := by
+  jev_test_budget_exhaustion
+
+/-- Induction branches complete as an ordinary replayable tactic script. -/
+example (xs : List Nat) : JevLean.tally xs = xs.length := by
+  induction xs <;> (simp [JevLean.tally, *] <;> omega)
 
 /-- Locally generated apply can open a successor that a later exact closes. -/
 example (P Q : Prop) (h : P → Q) (hp : P) : Q := by

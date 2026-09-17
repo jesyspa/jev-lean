@@ -28,30 +28,52 @@ structure Node where
   depth : Nat
   cost : Nat
 
-/-- Deterministic limits for the Lean-native frontier. -/
+/-- Deterministic limits for a single search invocation. `maxWallMs` is checked
+between transitions; individual Lean tactics and ranker processes are not preempted. -/
 structure Config where
   maxDepth : Nat := 6
   maxCost : Nat := 6
-  maxExpanded : Nat := 64
+  maxNodes : Nat := 64
+  maxHeartbeats : Nat := 256
+  maxJevCalls : Nat := 16
+  maxWallMs : Nat := 2_000
+
+/-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
+structure RankContext where
+  focusedGoal : String
+  pendingGoals : List String
+  path : List String
 
 /-- A seam used by tests and alternative bounded action generators. -/
 abbrev ActionSource := TacticM (List Action)
 
 /-- A seam used to replace the external ranker while retaining the same scheduler. -/
-abbrev ActionRanker := List Action → TacticM (List Action)
+abbrev ActionRanker := RankContext → List Action → TacticM (List Action)
 
 private partial def freshIntroName (used : List Name) (index : Nat := 0) : Name :=
   let candidate := Name.mkSimple <| if index == 0 then "jev_h" else s!"jev_h{index}"
   if used.contains candidate then freshIntroName used (index + 1) else candidate
 
 private def structuralActions : TacticM (List Action) := do
-  let used := (← getLCtx).foldl (init := []) fun names decl => decl.userName :: names
+  let lctx ← getLCtx
+  let used := lctx.foldl (init := []) fun names decl => decl.userName :: names
   let introName := freshIntroName used
   let ident := mkIdent introName
-  pure [
+  let mut actions := [
     { tacticSyntax := ← `(tactic| intro $(ident):ident), text := s!"intro {introName}" },
-    { tacticSyntax := ← `(tactic| constructor), text := "constructor" }
+    { tacticSyntax := ← `(tactic| constructor), text := "constructor" },
+    { tacticSyntax := ← `(tactic| left), text := "left" },
+    { tacticSyntax := ← `(tactic| right), text := "right" }
   ]
+  for decl in lctx do
+    if !decl.isImplementationDetail && !decl.userName.isAnonymous then
+      let typ ← inferType decl.toExpr
+      let ident := mkIdent decl.userName
+      if ← isProp typ then
+        actions := actions.concat { tacticSyntax := ← `(tactic| cases $ident:ident), text := s!"cases {decl.userName}" }
+      else
+        actions := actions.concat { tacticSyntax := ← `(tactic| induction $ident:ident), text := s!"induction {decl.userName}" }
+  pure actions
 
 private def closingActions : TacticM (List Action) := do
   pure [
@@ -81,12 +103,15 @@ def catalogue : TacticM (List Action) := do
   return (← structuralActions) ++ (← localActions) ++ (← closingActions)
 
 /-- Ask the external ranker to order fixed catalogue entries, retaining local order on failure. -/
-def rank (actions : List Action) : TacticM (List Action) := do
-  let goal ← getMainGoal
-  let state := (← ppGoal goal).pretty
+def rank (context : RankContext) (actions : List Action) : TacticM (List Action) := do
   let entries := actions.zipIdx.map fun (action, index) =>
     Json.mkObj [("id", Json.str s!"A{index + 1}"), ("tactic", Json.str action.text)]
-  let request := Json.mkObj [("state", Json.str state), ("actions", Json.arr entries.toArray)]
+  let request := Json.mkObj [
+    ("focused_goal", Json.str context.focusedGoal),
+    ("pending_sibling_goals", Json.arr (context.pendingGoals.map Json.str).toArray),
+    ("path", Json.arr (context.path.map Json.str).toArray),
+    ("actions", Json.arr entries.toArray)
+  ]
   try
     let output ← IO.Process.output { cmd := "python3", args := #["-m", "jevlean.rank", "--plain"] } (some request.compress)
     if output.exitCode != 0 then return actions
@@ -136,28 +161,47 @@ def expand (node : Node) (actions : List Action) : TacticM (List Node) := do
   original.restore
   return successors
 
-/-- Bounded breadth-first successor exploration with injectable actions and ranking. -/
+/-- Render a node's focused goal, ordered siblings, and preceding actions for ranking. -/
+def rankContext (node : Node) : TacticM RankContext := do
+  match node.goals with
+  | [] => return { focusedGoal := "no goals", pendingGoals := [], path := node.path.map (·.text) }
+  | goal :: siblings =>
+    return {
+      focusedGoal := (← ppGoal goal).pretty
+      pendingGoals := ← siblings.mapM fun sibling => return (← ppGoal sibling).pretty
+      path := node.path.map (·.text)
+    }
+
+/-- Deterministic FIFO frontier search. Budgets are checked before each expansion. -/
 def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) := do
   let original ← saveState
   let root ← initialNode
-  let rec visit (frontier : List Node) (fuel : Nat) : TacticM (Option Node) := do
+  let start ← IO.monoMsNow
+  let rec visit (frontier : List Node) (fuel calls : Nat) : TacticM (Option Node) := do
     match fuel, frontier with
-    | 0, _ | _, [] => return none
+    | _, [] | 0, _ => return none
     | fuel + 1, node :: rest =>
+      let elapsed ← IO.monoMsNow
+      if elapsed - start >= config.maxWallMs then return none
       if node.goals.isEmpty then return some node
       if node.depth >= config.maxDepth || node.cost >= config.maxCost then
-        visit rest fuel
+        visit rest fuel calls
       else
         node.restore
-        let actions ← withMainContext do ranker (← source)
+        let (actions, calls) ← withMainContext do
+          let actions ← source
+          if calls >= config.maxJevCalls then
+            pure (actions, calls)
+          else
+            return (← ranker (← rankContext node) actions, calls + 1)
         let successors ← expand node actions
         let successors := successors.filter fun successor =>
           successor.depth <= config.maxDepth && successor.cost <= config.maxCost
         if let some closed := successors.find? fun successor => successor.goals.isEmpty then
           return some closed
-        visit (rest ++ successors) fuel
+        visit (rest ++ successors) fuel calls
   try
-    visit [root] config.maxExpanded
+    visit [root] (min config.maxNodes config.maxHeartbeats) 0
   finally
     original.restore
 
