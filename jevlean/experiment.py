@@ -44,11 +44,12 @@ class TypeSafeError(RuntimeError):
 class TypeSafeClient:
     """Minimal standard-library client; the API key is never retained in a trace."""
 
-    def __init__(self, api_key: str, retries: int = 4) -> None:
+    def __init__(self, api_key: str, retries: int = 4, timeout: float = 60.0) -> None:
         if not api_key:
             raise TypeSafeError("TYPESAFE_API_KEY is not set")
         self._api_key = api_key
         self._retries = retries
+        self._timeout = timeout
 
     def evaluate(self, payload: dict[str, Any]) -> tuple[str, dict[str, Any], float]:
         body = canonical_json(payload)
@@ -65,7 +66,7 @@ class TypeSafeClient:
         started = time.monotonic()
         for attempt in range(self._retries + 1):
             try:
-                with urllib.request.urlopen(request, timeout=60) as response:
+                with urllib.request.urlopen(request, timeout=self._timeout) as response:
                     raw = response.read().decode("utf-8")
                 parsed = json.loads(raw)
                 if not isinstance(parsed, dict):

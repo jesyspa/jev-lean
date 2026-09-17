@@ -77,7 +77,7 @@ def rank(request: dict[str, Any], api_key: str | None = None) -> tuple[list[str]
     if not key:
         return ids, "fallback"
     try:
-        _, response, _ = TypeSafeClient(key).evaluate(payload(state, actions))
+        _, response, _ = TypeSafeClient(key, retries=0, timeout=5.0).evaluate(payload(state, actions))
         return ranking_from_response(response, ids), "jev"
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError):
         return ids, "fallback"
