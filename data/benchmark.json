@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "provenance": "Public synthetic Lean 4 goals modeled on proof shapes observed in the public sipser formalization; no sipser source text is transmitted.",
+  "actions": [
+    {"id": "assumption", "tactic": "assumption", "description": "Close a goal that is already present as a local hypothesis."},
+    {"id": "rfl", "tactic": "rfl", "description": "Close a definitional equality by reflexivity."},
+    {"id": "simp", "tactic": "simp", "description": "Simplify the goal with the standard simp lemma set."},
+    {"id": "simpa", "tactic": "simpa", "description": "Simplify the goal and available exact target shape."},
+    {"id": "aesop", "tactic": "aesop", "description": "Run bounded general-purpose logical proof search."},
+    {"id": "omega", "tactic": "omega", "description": "Solve Presburger arithmetic over naturals or integers."},
+    {"id": "norm_num", "tactic": "norm_num", "description": "Normalize and prove a concrete numeric statement."},
+    {"id": "constructor", "tactic": "constructor", "description": "Apply the constructor of a conjunction or other single-constructor goal."},
+    {"id": "ext_simp", "tactic": "ext <;> simp", "description": "Apply extensionality and simplify the resulting pointwise goals."},
+    {"id": "funext_simp", "tactic": "funext x <;> simp_all", "description": "Apply function extensionality and simplify pointwise using hypotheses."},
+    {"id": "contradiction", "tactic": "contradiction", "description": "Close an inconsistent local context."},
+    {"id": "tauto", "tactic": "tauto", "description": "Solve a propositional tautology."},
+    {"id": "linarith", "tactic": "linarith", "description": "Solve a goal from linear arithmetic hypotheses."},
+    {"id": "ring", "tactic": "ring", "description": "Normalize and prove a polynomial identity."},
+    {"id": "native_decide", "tactic": "native_decide", "description": "Compute a closed decidable proposition using native evaluation."},
+    {"id": "decide", "tactic": "decide", "description": "Compute a small closed decidable proposition in the kernel."},
+    {"id": "cases_xs", "tactic": "cases xs <;> simp_all [JevLean.tally]", "description": "Split a list named xs into nil and cons cases, then simplify."},
+    {"id": "induction_xs", "tactic": "induction xs <;> simp_all [JevLean.tally] <;> omega", "description": "Induct on a list named xs, simplify with the induction hypothesis, and discharge arithmetic side goals."},
+    {"id": "and_intro", "tactic": "apply And.intro <;> assumption", "description": "Build a conjunction from two matching local hypotheses."},
+    {"id": "exists_rfl", "tactic": "exact ⟨_, rfl⟩", "description": "Provide an existential witness whose required equality is reflexive."}
+  ],
+  "tactic_cases": [
+    {"id": "t01_premise", "declaration": "example (P : Prop) (h : P) : P := by", "state": "local context:\nP : Prop\nh : P\n⊢ P"},
+    {"id": "t02_defeq", "declaration": "example (xs : List Nat) : [] ++ xs = xs := by", "state": "local context:\nxs : List Nat\n⊢ [] ++ xs = xs"},
+    {"id": "t03_nat_order", "declaration": "example (n m : Nat) (h : n ≤ m) : n + 3 ≤ m + 3 := by", "state": "local context:\nn m : Nat\nh : n ≤ m\n⊢ n + 3 ≤ m + 3"},
+    {"id": "t04_concrete_mod", "declaration": "example : (37 : Nat) % 5 = 2 := by", "state": "local context: empty\n⊢ (37 : Nat) % 5 = 2"},
+    {"id": "t05_set_distrib", "declaration": "example (A B C : Set Nat) : A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by", "state": "local context:\nA B C : Set Nat\n⊢ A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)"},
+    {"id": "t06_function_ext", "declaration": "example (f g : Nat → Nat) (h : ∀ x, f x = g x) : f = g := by", "state": "local context:\nf g : Nat → Nat\nh : ∀ x, f x = g x\n⊢ f = g"},
+    {"id": "t07_conjunction", "declaration": "example (P Q : Prop) (hp : P) (hq : Q) : P ∧ Q := by", "state": "local context:\nP Q : Prop\nhp : P\nhq : Q\n⊢ P ∧ Q"},
+    {"id": "t08_list_length", "declaration": "example (xs ys : List Nat) : (xs ++ ys).length = xs.length + ys.length := by", "state": "local context:\nxs ys : List Nat\n⊢ (xs ++ ys).length = xs.length + ys.length"},
+    {"id": "t09_polynomial", "declaration": "example (x y : Int) : (x + y)^2 = x^2 + 2*x*y + y^2 := by", "state": "local context:\nx y : Int\n⊢ (x + y)^2 = x^2 + 2*x*y + y^2"},
+    {"id": "t10_implication", "declaration": "example (P Q : Prop) (h : P → Q) (hp : P) : Q := by", "state": "local context:\nP Q : Prop\nh : P → Q\nhp : P\n⊢ Q"},
+    {"id": "t11_exists", "declaration": "example (n : Nat) : ∃ m, m = n + 1 := by", "state": "local context:\nn : Nat\n⊢ ∃ m, m = n + 1"},
+    {"id": "t12_induction", "declaration": "example (xs : List Nat) : JevLean.tally xs = xs.length := by", "state": "local context:\nxs : List Nat\n⊢ JevLean.tally xs = xs.length"}
+  ],
+  "routing_cases": [
+    {"id": "r01_standard", "state": "local context:\nh : P\n⊢ P", "gold_route": "listed_action", "reason": "assumption is listed"},
+    {"id": "r02_specialized_tactic", "state": "local context:\nx y : Real\nh : x^2 + y^2 = 0\n⊢ x = 0", "gold_route": "llm_tactic_fallback", "reason": "a specialized nonlinear proof is needed and no nlinarith action is listed"},
+    {"id": "r03_named_rewrite", "state": "local context:\nhstep : customStep a b\nhsound : ∀ x y, customStep x y → measure y < measure x\n⊢ measure b < measure a", "gold_route": "llm_tactic_fallback", "reason": "a short instantiated exact/apply term is needed but no listed template names these hypotheses"},
+    {"id": "r04_accumulator", "state": "Goal: prove that processing a remaining transition list preserves acceptance. The induction hypothesis only starts from an initial state, but after one transition the current state is not initial. No listed action changes the induction statement.", "gold_route": "llm_helper_fallback", "reason": "the proof needs a generalized accumulator lemma before induction, matching a recurring automata-proof shape"},
+    {"id": "r05_closure_helper", "state": "Goal: lift a multi-step relation through a constructor. Available fact lifts one relation step. Repeated application must cover an arbitrary reflexive-transitive derivation, and the current tactic list does not synthesize the closure lemma.", "gold_route": "llm_helper_fallback", "reason": "a reusable closure/lift helper declaration is the intended unit"},
+    {"id": "r06_library_exact", "state": "local context:\nf : α → β\ng : β → α\nh : Function.LeftInverse g f\n⊢ Function.Injective f", "gold_route": "llm_tactic_fallback", "reason": "the direct method h.injective is not represented by a listed action"},
+    {"id": "r07_automation", "state": "local context:\nn m : Nat\nh : n ≤ m\n⊢ n + 1 ≤ m + 1", "gold_route": "listed_action", "reason": "omega is listed"},
+    {"id": "r08_definition", "state": "Goal: state and prove an iteration theorem for plugging any parse tree into a one-hole context repeatedly. The current inputs contain only two unrelated concrete trees, so the needed compositional object is not represented.", "gold_route": "llm_helper_fallback", "reason": "a helper predicate/definition preserving the hole is needed before the proof"}
+  ],
+  "lemma_cases": [
+    {"id": "l01_length_append", "state": "local context:\nxs ys : List Nat\n⊢ (xs ++ ys).length = xs.length + ys.length", "gold": "List.length_append", "candidates": [
+      {"id": "List.length_reverse", "signature": "(reverse xs).length = xs.length"},
+      {"id": "List.map_append", "signature": "map f (xs ++ ys) = map f xs ++ map f ys"},
+      {"id": "List.length_append", "signature": "(xs ++ ys).length = xs.length + ys.length"},
+      {"id": "List.append_assoc", "signature": "xs ++ ys ++ zs = xs ++ (ys ++ zs)"},
+      {"id": "List.mem_append", "signature": "a ∈ xs ++ ys ↔ a ∈ xs ∨ a ∈ ys"}
+    ]},
+    {"id": "l02_map_append", "state": "local context:\nf : Nat → Nat\nxs ys : List Nat\n⊢ List.map f (xs ++ ys) = List.map f xs ++ List.map f ys", "gold": "List.map_append", "candidates": [
+      {"id": "List.map_append", "signature": "map f (xs ++ ys) = map f xs ++ map f ys"},
+      {"id": "List.filter_append", "signature": "filter p (xs ++ ys) = filter p xs ++ filter p ys"},
+      {"id": "List.map_reverse", "signature": "map f (reverse xs) = reverse (map f xs)"},
+      {"id": "List.append_assoc", "signature": "xs ++ ys ++ zs = xs ++ (ys ++ zs)"},
+      {"id": "List.length_map", "signature": "(map f xs).length = xs.length"}
+    ]},
+    {"id": "l03_reverse_reverse", "state": "local context:\nxs : List Nat\n⊢ xs.reverse.reverse = xs", "gold": "List.reverse_reverse", "candidates": [
+      {"id": "List.reverse_append", "signature": "reverse (xs ++ ys) = reverse ys ++ reverse xs"},
+      {"id": "List.reverse_reverse", "signature": "reverse (reverse xs) = xs"},
+      {"id": "List.length_reverse", "signature": "(reverse xs).length = xs.length"},
+      {"id": "List.reverse_cons", "signature": "reverse (x :: xs) = reverse xs ++ [x]"},
+      {"id": "List.map_reverse", "signature": "map f (reverse xs) = reverse (map f xs)"}
+    ]},
+    {"id": "l04_mod_bound", "state": "local context:\nn m : Nat\nhm : 0 < m\n⊢ n % m < m", "gold": "Nat.mod_lt", "candidates": [
+      {"id": "Nat.mod_lt", "signature": "n % m < m when 0 < m"},
+      {"id": "Nat.mod_le", "signature": "n % m ≤ n"},
+      {"id": "Nat.div_le_self", "signature": "n / m ≤ n"},
+      {"id": "Nat.mod_add_div", "signature": "n % m + m * (n / m) = n"},
+      {"id": "Nat.lt_add_one", "signature": "n < n + 1"}
+    ]},
+    {"id": "l05_left_inverse", "state": "local context:\nf : α → β\ng : β → α\nh : Function.LeftInverse g f\n⊢ Function.Injective f", "gold": "Function.LeftInverse.injective", "candidates": [
+      {"id": "Function.RightInverse.surjective", "signature": "RightInverse g f → Surjective f"},
+      {"id": "Function.LeftInverse.injective", "signature": "LeftInverse g f → Injective f"},
+      {"id": "Function.Injective.comp", "signature": "Injective g → Injective f → Injective (g ∘ f)"},
+      {"id": "Function.Surjective.comp", "signature": "Surjective g → Surjective f → Surjective (g ∘ f)"},
+      {"id": "Function.LeftInverse.surjective", "signature": "LeftInverse g f → Surjective g"}
+    ]},
+    {"id": "l06_set_inter", "state": "local context:\nA B : Set α\n⊢ A ∩ B = B ∩ A", "gold": "Set.inter_comm", "candidates": [
+      {"id": "Set.union_comm", "signature": "A ∪ B = B ∪ A"},
+      {"id": "Set.inter_assoc", "signature": "A ∩ B ∩ C = A ∩ (B ∩ C)"},
+      {"id": "Set.inter_comm", "signature": "A ∩ B = B ∩ A"},
+      {"id": "Set.inter_subset_left", "signature": "A ∩ B ⊆ A"},
+      {"id": "Set.union_inter_cancel_left", "signature": "A ∪ (A ∩ B) = A"}
+    ]},
+    {"id": "l07_nat_comm", "state": "local context:\nn m : Nat\n⊢ n + m = m + n", "gold": "Nat.add_comm", "candidates": [
+      {"id": "Nat.mul_comm", "signature": "n * m = m * n"},
+      {"id": "Nat.add_assoc", "signature": "n + m + k = n + (m + k)"},
+      {"id": "Nat.add_comm", "signature": "n + m = m + n"},
+      {"id": "Nat.zero_add", "signature": "0 + n = n"},
+      {"id": "Nat.add_left_cancel", "signature": "n + m = n + k → m = k"}
+    ]},
+    {"id": "l08_mem_append", "state": "local context:\na : α\nxs ys : List α\n⊢ a ∈ xs ++ ys ↔ a ∈ xs ∨ a ∈ ys", "gold": "List.mem_append", "candidates": [
+      {"id": "List.mem_cons", "signature": "a ∈ b :: xs ↔ a = b ∨ a ∈ xs"},
+      {"id": "List.mem_append", "signature": "a ∈ xs ++ ys ↔ a ∈ xs ∨ a ∈ ys"},
+      {"id": "List.append_eq_nil", "signature": "xs ++ ys = [] ↔ xs = [] ∧ ys = []"},
+      {"id": "List.subset_append_left", "signature": "xs ⊆ xs ++ ys"},
+      {"id": "List.length_append", "signature": "(xs ++ ys).length = xs.length + ys.length"}
+    ]}
+  ]
+}
