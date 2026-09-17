@@ -59,7 +59,7 @@ def catalogue : TacticM (List Action) := do
 def rank (actions : List Action) : TacticM (List Action) := do
   let goal ← getMainGoal
   let state := (← ppGoal goal).pretty
-  let entries := actions.enum.map fun (index, action) =>
+  let entries := actions.zipIdx.map fun (action, index) =>
     Json.mkObj [("id", Json.str s!"A{index + 1}"), ("tactic", Json.str action.text)]
   let request := Json.mkObj [("state", Json.str state), ("actions", Json.arr entries.toArray)]
   try
@@ -70,7 +70,9 @@ def rank (actions : List Action) : TacticM (List Action) := do
     if indices.length != actions.length || indices.eraseDups.length != actions.length ||
         indices.any fun index => index == 0 || index > actions.length then
       return actions
-    return indices.map fun index => actions[index - 1]!
+    let ranked := indices.filterMap fun index => actions[index - 1]?
+    if ranked.length != actions.length then return actions
+    return ranked
   catch _ => return actions
 
 /-- Run each action from the same saved state and retain its successor goals. -/

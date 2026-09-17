@@ -93,7 +93,7 @@ def main() -> None:
     except (json.JSONDecodeError, ValueError) as error:
         raise SystemExit(f"invalid rank request: {error}")
     if args.plain:
-        print("\\n".join(ranking))
+        print("\n".join(ranking))
     else:
         print(json.dumps({"ranking": ranking, "source": source}, ensure_ascii=False))
 

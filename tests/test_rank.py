@@ -1,3 +1,7 @@
+import json
+import os
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -40,6 +44,19 @@ class RankTests(unittest.TestCase):
     def test_explicit_complete_order_is_returned(self) -> None:
         with patch.dict("os.environ", {"JEV_RANK_ORDER": "A02,A01"}, clear=False):
             self.assertEqual(rank(REQUEST, api_key=""), (["A02", "A01"], "override"))
+
+    def test_plain_cli_writes_one_identifier_per_line(self) -> None:
+        environment = os.environ.copy()
+        environment["JEV_RANK_ORDER"] = "A02,A01"
+        result = subprocess.run(
+            [sys.executable, "-m", "jevlean.rank", "--plain"],
+            input=json.dumps(REQUEST),
+            text=True,
+            capture_output=True,
+            check=True,
+            env=environment,
+        )
+        self.assertEqual(result.stdout.splitlines(), ["A02", "A01"])
 
     def test_payload_only_exposes_catalogue_actions(self) -> None:
         criteria = payload(REQUEST["state"], REQUEST["actions"])["questions"]["ranking"]["criteria"]
