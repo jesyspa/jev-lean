@@ -1,282 +1,340 @@
 # Jev-first Lean prover implementation proposal
 
-Use this proposal to build the first end-to-end prover. The system searches verified Lean states, uses Jev to choose promising paths, and calls a generative LLM when ordinary proof actions or the current proof formulation are insufficient.
+Use this proposal to build and evaluate an end-to-end prover. Begin with the bounded backend spike. Start the controller only after that spike passes its gate.
 
-## Success criterion
+## Goal
 
-The first system accepts a theorem declaration with its proof removed and returns either:
+The prover accepts a theorem declaration with its proof removed and returns either:
 
-- a proof and optional private helper declarations that compile in a clean replay; or
-- a structured failure record identifying the exhausted subsystem and remaining frontier.
+- a proof and optional private helper declarations accepted by clean Lean elaboration; or
+- a structured failure record with the remaining frontier and evidence-backed failure causes.
 
-Measure the system by verified solve rate against total Lean CPU, wall time, Jev calls, and generative-model tokens. Report results separately for all tasks and for tasks that a bounded Aesop prepass does not solve.
+The controller searches Lean-verified states. Jev ranks promising paths. A generative LLM supplies direct actions or complete helper patches when ordinary Lean actions stall.
+
+Measure verified solve rate against total Lean CPU, wall time, Jev calls, and generative-model tokens. Report all tasks and automation-resistant tasks separately.
+
+## Feasibility gate
+
+The first deliverable is a Pantograph spike, not the full controller. Pin Pantograph to commit `7076ab3632b5de67a4f83ab259b23b37acaea1d0` and Lean 4.30.
+
+The spike passes only when automated tests demonstrate:
+
+1. immutable branching from an ancestor `stateId`;
+2. focused tactic execution with a fixed `goalId` and `autoResume` policy while preserving other goals;
+3. root-level detection of unresolved metavariables after visible goals disappear;
+4. extraction and independent execution of concrete `exact?`, `apply?`, `rw?`, `simp?`, `aesop?`, and `grind? +suggestions` suggestions;
+5. two isolated helper lineages created from one non-root state, alternating execution without helper leakage;
+6. helper behavior under namespaces, local instances, and attributes;
+7. worker termination with several live branches, followed by reconstruction of every retained branch;
+8. clean source replay in a fresh process;
+9. theorem-hole extraction that prevents access to the target declaration and later declarations;
+10. latency profiles for startup, suggestions, ordinary tactics, broad automation, helper compilation, recovery, and replay.
+
+Pantograph goal output is not a lossless kernel-state serialization. The spike uses conservative state identity. It does not prune two states merely because normalized pretty output or expression S-expressions match.
+
+If helper isolation, branch reconstruction, or root completion cannot be made reliable with a thin adapter, evaluate a project-owned Lean worker before implementing search.
 
 ## System boundary
 
-The controller is an external Python process. It owns search, budgets, caching, provider calls, and traces. A supervised Pantograph subprocess owns Lean elaboration and proof states. Lean is the correctness oracle. Jev ranks bounded alternatives. A generative LLM writes candidate Lean text.
-
-Pin Pantograph to commit `7076ab3632b5de67a4f83ab259b23b37acaea1d0` with Lean 4.30 for the first implementation. Hide Pantograph behind a small backend interface so another pinned benchmark environment or a project-owned worker can replace it.
+The controller is an external Python process. It owns search, budgets, provider calls, caches, and traces. A credential-free supervisor owns Pantograph. Lean is the correctness oracle. Jev supplies bounded preferences. A generative LLM writes candidate Lean source.
 
 ```text
 CLI / benchmark runner
         |
         v
-Python search controller
+Python controller
   |        |             |
-  |        |             +-- LLM providers: direct actions and helper patches
-  |        +---------------- Jev: sibling choice and path-success estimates
-  +------------------------- supervised Pantograph worker
+  |        |             +-- LLM providers: actions and complete helper patches
+  |        +---------------- Jev: sibling preference, route, path estimate
+  +------------------------- sandboxed Pantograph supervisor
                                   |
                                   +-- Lean/Mathlib automation and suggestions
-                                  +-- tactic execution and successor states
-                                  +-- temporary helper environments
-                                  +-- clean replay
+                                  +-- tactic execution and branching state handles
+                                  +-- isolated helper lineages
+                                  +-- clean source replay
 ```
 
-Never accept model text without Lean verification. Never expose credentials, unrelated source, comments, or repository configuration to model providers.
+Generated Lean code executes in a sandbox with no credentials, no network, read-only project and toolchain mounts, an isolated writable directory, and process-tree CPU, memory, PID, output, and wall-time limits. Provider access stays in the controller. Lean verification does not replace this sandbox because tactics and elaborators can run metaprograms with IO.
 
-## Lean backend interface
+Use a strict trust profile initially. Reject `sorry`, `admit`, new axioms, unsafe dependencies, and native-evaluation evidence. Exclude `native_decide`, whose Lean 4.30 implementation expands the trusted base through native evaluation. Audit transitive proof dependencies in clean replay.
 
-Implement this interface before the search policy:
+## Backend interface
+
+Implement this interface after the spike fixes the concrete handle semantics:
 
 ```python
 initialize(task) -> ProofSession
-suggest(session, family, limit) -> list[Action]
-execute(session, action, timeout) -> Invalid | Solved | Successor
-install_patch(session, patch, timeout) -> Invalid | PatchSuccessor
-normalize(session) -> NormalizedState
+suggest(state_handle, family, limit) -> list[Action]
+execute(state_handle, goal_id, action, timeout) -> Invalid | Solved | Successor
+compile_patch(task, verified_prefix, patch, timeout) -> Invalid | PatchSuccessor
+reconstruct(replay_prefix, lineage) -> StateHandle
+inspect_root(state_handle) -> RootStatus
 replay(task, proof, declarations, timeout) -> ReplayResult
 close(session) -> None
 ```
 
-`NormalizedState` contains all open goals, local declarations, target expressions, environment lineage, and a stable hash. The hash includes the imported environment and installed private declarations. Pretty-printed binder names are normalized before hashing where Lean exposes stable expression data.
+`StateHandle` contains the Pantograph process generation, executable `stateId`, selected `goalId`, complete visible goal list, replay prefix, environment lineage, and an advisory fingerprint. Runtime handles never enter persistent transition-cache keys.
 
-`Successor` contains the action, all resulting goals, diagnostics, elapsed Lean CPU, and normalized hash. `PatchSuccessor` also contains the new environment lineage and every obligation introduced by the patch.
+Fix `autoResume` for the whole experiment. Actions focus the selected goal and retain all other goals. A state is solved only when root inspection finds no unresolved metavariables and clean replay accepts the complete source.
 
-Run one persistent worker per theorem. The supervisor enforces a hard process limit outside Lean. On timeout or crash, kill the worker, start a fresh worker, and replay the verified prefix. A completed result is accepted only after replay in a fresh process.
+Suggestion tactics are discovery operations. Parse their messages, materialize concrete replacements, and execute each replacement independently from the ancestor state. Never retain a state produced by a suggestion command itself; Lean's suggestion machinery may temporarily admit goals while reporting candidates.
 
-## Reuse Lean automation
+A worker crash invalidates every runtime state handle. Reconstruct retained frontier nodes lazily from their source prefixes and environment lineages.
 
-Treat Lean and Mathlib as the action generator. The controller orchestrates existing tools instead of implementing tactic semantics.
+## Theorem-hole environment
 
-Always make these bounded action families available when their syntax applies:
+Construct each task from its source prefix and exact imports. Remove the target body before initialization. Exclude the target declaration and unavailable later declarations from both automation and retrieval.
 
-- local closure and application: `assumption`, `exact`, `apply`, `refine`, and `solve_by_elim` over local declarations;
-- rewriting and simplification: both directions of local equalities, `rw?`, `simp?`, `simp`, and `simpa`;
-- environment search: `exact?`, `apply?`, `library_search`, and bounded declaration lookup by type and name;
-- logical structure: `intro`, `constructor`, `left`, `right`, `use`, `ext`, `funext`, `cases`, and `induction`;
-- automation: bounded `aesop`, `grind`, `tauto`, and `contradiction`;
-- decision and arithmetic procedures: `decide`, `native_decide`, `omega`, `norm_num`, `linarith`, `nlinarith`, and `ring`.
+Freeze and record:
 
-Materialize suggestions into concrete replayable actions. Include declaration names and signatures in retrieval actions. Apply per-action heartbeat and wall-time limits so broad automation cannot consume the theorem budget.
+- repository and commit;
+- Lean toolchain and Lake manifest;
+- source path and prefix hash;
+- imports and namespace/options state;
+- target statement;
+- admissible declarations;
+- extraction procedure and exclusions.
 
-The first backend acceptance test demonstrates:
+Reference proofs, recorded continuations, and test answers remain outside prompts and retrieval indexes.
 
-1. dynamic `exact` and `apply` actions from local hypotheses;
-2. one retrieved Mathlib declaration;
-3. branching from one state into two independently executable successors;
-4. preservation of multiple goals;
-5. timeout recovery by replay;
-6. installation of a private helper lemma in a child environment;
-7. clean proof replay.
+## Reuse Lean and Mathlib automation
 
-## Search representation
+Lean and Mathlib generate actions. The controller allocates and ranks their results.
 
-Use bounded AND/OR best-first search.
+The Lean 4.30 capability set includes:
 
-An OR node is a complete Lean proof state. Its outgoing edges are alternative tactical actions or environment patches. An AND edge is complete only when every goal or helper obligation introduced by that edge is solved. The implementation may keep Lean's multi-goal state intact, but the search record preserves the AND relationship for scoring and failure attribution.
+- local closure and application through `assumption`, concrete `exact`, `apply`, `refine`, and `solve_by_elim` actions;
+- rewriting and simplification through both directions of local equalities, `rw?`, `simp?`, `simp`, and `simpa`;
+- environment suggestions through `exact?`, `apply?`, all-suggestions variants, and `Lean.LibrarySuggestions.select`;
+- structure through `intro`, `constructor`, `left`, `right`, `use`, `ext`, `funext`, `cases`, and `induction`;
+- bounded automation through `try?`, `aesop`, `aesop?`, `grind`, `grind? +suggestions`, `tauto`, and `contradiction`;
+- strict-profile arithmetic and decision procedures through `decide`, `omega`, `norm_num`, `linarith`, `nlinarith`, and `ring`.
 
-Each node stores:
+`library_search` is not an independent supported action at this pin. Use its supported suggestion successors and a separate retriever.
 
-- normalized Lean state and environment lineage;
-- replayable verified prefix;
-- parent edge and depth;
-- remaining Lean, Jev, LLM, and wall-time budgets;
-- deterministic features such as goal count and expression size;
-- Jev path-success estimate and sibling distribution;
-- generation source and accumulated cost.
+The initial retriever indexes every admissible declaration name and type expression. It performs goal-head/type-shape filtering, token/name retrieval, and Lean elaboration of concrete `exact`, `apply`, `rw`, and `simpa using` forms. Widen from 8 to 32 retrieved declarations only after the first batch yields no retained transition. Measure full-index recall and latency.
 
-Deduplicate nodes by normalized state plus environment lineage. Retain the cheaper prefix when two paths reach the same node.
+Charge suggestion discovery, retrieval, and independent candidate execution to the theorem ledger.
 
-## Tactical expansion
+## Search model
 
-Expand a tactical OR node as follows:
+Search complete multi-goal Lean states as an ordinary best-first graph. Each edge is an alternative action or complete helper patch. A node succeeds only when all goals in its Lean state are closed. This gives conjunctive completion without pretending that goals can be solved independently when metavariables or local contexts couple them.
 
-1. Ask Lean for local and suggestion-derived concrete actions.
-2. Add applicable bounded automation actions.
-3. Execute candidates in Lean with short limits.
-4. Drop invalid, unchanged, timed-out, and duplicate successors.
-5. Return immediately when a candidate closes every goal.
-6. Present the verified successors to Jev.
-7. Insert the retained successors into the global frontier.
+Each frontier record stores:
 
-Jev sees the current state and, for each option, the concrete action and resulting state. The question is:
+- executable or reconstructible state handle;
+- all goals and selected goal;
+- verified source prefix and helper environment lineage;
+- parent edge, insertion sequence, and depth;
+- Jev sibling rank and bounded path preference;
+- measured cumulative Lean, Jev, and LLM costs;
+- generated families and attempted actions.
 
-> Which verified transition is most likely to lie on a short, robust path to a complete proof?
+The theorem owns one budget ledger. Child nodes reference it; they do not receive copies of remaining resources.
 
-Use one `Choice` to rank siblings. Include a `none_of_these` option. Use independent path-success questions to compare nodes from different sibling sets. Do not compare raw Choice probabilities produced from different option sets.
+### Scheduler
 
-The initial frontier priority is:
+Use these deterministic rules for the first controller:
 
-```text
-path failure cost
-+ depth penalty
-+ measured Lean/model cost penalty
-+ duplicate and repeated-family penalty
-- diversity bonus
-```
+- select the first open goal reported under the frozen `autoResume` policy;
+- pop the lowest-priority frontier node, breaking ties by insertion sequence;
+- expand each `(lineage, replay-prefix hash)` once;
+- increment depth for each accepted tactic or helper-patch edge;
+- cap the frontier at 256 nodes and evict the worst score, recording the eviction;
+- never reopen evicted nodes during ordinary search;
+- retain one age-priority slot in every eight pops so model scores cannot starve old branches;
+- reserve theorem budget for fallback and final replay before tactical expansion begins.
 
-Convert the Jev path-success response to a clipped negative log cost. Keep every coefficient in run configuration and report it. Begin with equal-cost tie-breaking and calibrate coefficients only on a development split.
+A node expansion discovers and executes actions in diverse batches of at most eight. The first batch allocates up to two local actions, two suggestions, one logical/structural tactic, one automation tactic, one arithmetic/decision tactic, and one retrieval action. Widen through four batches only when the node remains eligible and budget remains. Cap discovery at 32 concrete actions.
 
-## Structural expansion
+A candidate attempt includes discovery cost and execution. A successor is accepted when Lean changes the complete state or closes it. Record invalid, unchanged, timed-out, and duplicate-prefix outcomes.
 
-A structural branch changes the local proof environment. It is appropriate when progress likely requires a stronger statement, reusable fact, witness construction, or new representation.
+After each batch, ask Jev to rank the verified sibling successors. Retain at most eight tactical successors across the expansion. Logged but discarded siblings return only in a separately budgeted audit, never silently during search.
 
-Use three execution contracts:
+Initial priority uses deterministic depth, measured cost, sibling rank, and age. No state is pruned solely by an uncalibrated Jev probability.
+
+## Jev questions
+
+Use three distinct question schemas.
+
+### Sibling preference
+
+Given one parent and its Lean-verified successors:
+
+> Under continuation policy P and remaining budget B, which transition is the best next expansion toward closing every goal?
+
+Treat Choice probabilities as sibling preference signals. `none_of_these` means that spending the next expansion on any displayed successor has lower expected utility than route escalation under the same budget.
+
+### Route selection
+
+Choose among:
+
+- widen Lean action families;
+- request direct generated actions;
+- request a lemma patch;
+- request a generalization patch;
+- request a definition patch;
+- abandon this node under the current budget.
+
+Deterministic exhaustion can force fallback even when Jev selects widening.
+
+### Path estimate
+
+Define the event exactly:
+
+> The configured continuation policy closes every goal in this complete state within 16 further node expansions using the displayed allowed families and remaining provider budget.
+
+Ask this independently for retained states. Until held-out calibration exists, transform the answer into a bounded heuristic bonus rather than a probability cost. Refresh it only when the state is reconstructed under a different remaining-budget bucket.
+
+Evaluate discrimination and calibration on a development split with fixed continuations and budgets. A budget-censored failure is not evidence that a state is unprovable. Never multiply separate-goal estimates.
+
+## Direct generation
+
+Trigger direct generation when Lean yields no retained tactical successor, all batches are exhausted, or the theorem reaches its configured tactical-expansion threshold.
+
+The provider receives the complete state, attempted action families, bounded admissible premises, and remaining budget. It returns up to eight tactics or terms. Execute them from the ancestor state and rank verified successors like Lean-generated actions.
+
+Use only GLM 5.3 Flash and DeepSeek V4.1 Flash in the first live fallback experiment. Record exact resolved provider model IDs.
+
+## Helper contracts
+
+The first implementation accepts only complete, hole-free helper declarations. A helper's internal proof obligations must be discharged before the declaration becomes available. The search may continue only on goals left by applying the completed helper to the unchanged target.
+
+Use three generation contracts.
 
 ### Lemma patch
 
-The LLM returns one or more private lemmas and a revised next action. Invariants, closure-lifting lemmas, bridge lemmas, normalization facts, and preservation facts use this contract.
+Return bounded private declarations over existing objects and a target action that uses them. Invariants, closure-lifting facts, bridges, normalization lemmas, and preservation facts use this contract.
+
+Acceptance requires every declaration to elaborate, remain within the admissible dependency environment, and change the target proof state through the supplied action. An unused helper is not progress.
 
 ### Generalization patch
 
-The LLM returns a strengthened theorem, its proof obligations, and a derivation of the original goal. Accumulator generalization and strengthened induction hypotheses use this contract.
+Return a complete strengthened theorem and a Lean-checked adapter from it to the original target with its original binders and assumptions. The strengthened theorem must differ under an explicit binder or premise generalization. Accumulator generalization and strengthened induction use this contract.
 
 ### Definition patch
 
-The LLM returns a private definition, the minimum API lemmas required to use it, and a revised proof path. New compositional objects and representations use this contract.
+Return a conservative private definition, complete bounded API lemmas, and a target action that uses the new API. Acceptance includes termination checking, declaration and dependency limits, and demonstrated use in the target transition.
 
-Witnesses that elaborate directly remain tactical actions. A witness becomes a lemma patch when its construction creates independent obligations worth searching separately.
+Directly elaborating witness terms remain tactical actions. A named witness fact over existing objects is a lemma patch.
 
-For a structural expansion:
+For each structural request:
 
-1. Give the LLM the target, bounded relevant declarations, attempted action families, and obstruction summary.
-2. Request up to three patches under one explicit contract.
-3. Parse each response as structured data containing declarations, target action, model metadata, and generation parameters.
-4. Compile each patch in a child environment.
-5. Reject patches that weaken or alter the target, add axioms, contain holes, or fail elaboration.
-6. Present only verified patch successors and their remaining obligations to Jev.
-7. Add selected child lineages to the same frontier as tactical successors.
+1. request at most three complete patches under one selected contract;
+2. enforce declaration count, source size, dependency depth, and compilation limits;
+3. reconstruct the verified target prefix in an isolated child environment;
+4. compile every declaration without holes;
+5. run the target action and inspect its complete successor state;
+6. reject target changes, new axioms, unsafe/native dependencies, leakage, and unused helpers;
+7. show only accepted patch successors to Jev;
+8. add retained child lineages to the ordinary frontier.
 
-Jev may request a structural family before tactical exhaustion. Deterministic stagnation also triggers structural generation so a mistaken Jev route cannot suppress fallback.
+Helper lineages are source-level artifacts. Reconstruct them after worker loss by replaying declarations and the target prefix in a fresh isolated process.
 
-## Stagnation and fallback
+## Initial resource policy
 
-Trigger a direct-action LLM request when any of these holds:
+Treat these as frozen experiment defaults:
 
-- Lean produces no new tactical successor;
-- all tactical successors within the per-node execution budget have been exhausted;
-- the frontier repeats the same action family without reducing the best path-failure cost;
-- the theorem reaches its configured tactical expansion threshold without a proof.
-
-The direct-action provider returns up to eight tactics or terms. Execute and rank valid successors exactly like code-generated actions.
-
-Trigger structural generation when:
-
-- Jev selects a structural family with sufficient calibrated probability;
-- induction repeatedly fails because the induction hypothesis is too specific;
-- relation or preservation goals recur under a changed accumulator or constructor;
-- direct fallback has produced no verified improving successor in two rounds;
-- the tactical frontier is exhausted.
-
-Defaults are experimental configuration rather than architecture rules.
-
-## Initial bounded policy
-
-Use these defaults for the first runnable controller:
-
-- 32 concrete actions per tactical expansion;
+- 8 actions per incremental batch and 32 discovered actions per expansion;
 - 8 retained tactical successors;
-- 3 generated patches per structural expansion;
-- 128 expanded nodes per theorem;
+- 3 generated patches per structural request;
+- 128 expanded nodes and frontier capacity 256;
 - depth limit 24;
 - 2 seconds per ordinary tactic and 10 seconds per broad automation action;
 - 2 direct-generation rounds and 1 structural-generation round;
-- 5 minutes wall time per theorem.
+- 5 minutes wall time per theorem;
+- 20% of remaining wall time and provider budget reserved for fallback;
+- final replay budget reserved before search starts.
 
-Run a deterministic automation prepass with a separate small budget. Record its solves as part of overall performance and exclude them from the conditional Jev-search metric.
+The supervisor measures wall and process-tree CPU because Pantograph does not provide complete per-action CPU accounting. Profile actual distributions before increasing batch or node limits. Compile-before-rank is retained only if downstream expansions saved by Jev offset its measured speculative execution cost.
 
-## Provider contracts
+## Trust and acceptance
 
-Keep generation provider-neutral:
+A claimed proof passes all of these checks:
 
-```text
-propose_direct(state, attempts, premises, count) -> DirectCandidate[]
-propose_lemma_patches(task, obstruction, premises, count) -> LemmaPatch[]
-propose_generalizations(task, obstruction, premises, count) -> GeneralizationPatch[]
-propose_definition_patches(task, obstruction, premises, count) -> DefinitionPatch[]
-```
+1. all generated text ran in the restricted worker sandbox;
+2. the original statement, imports, options, and prior declarations are unchanged;
+3. Lean elaborates the submitted declarations and proof from source in a fresh process;
+4. root inspection finds no unresolved metavariables;
+5. no prohibited holes, axioms, unsafe dependencies, or native-evaluation evidence occur transitively;
+6. every helper lies in the private generated namespace and is used by the accepted proof lineage.
 
-Each candidate records provider, exact model ID, sampling parameters, token use, response hash, and source text. The first live fallback evaluation allows only GLM 5.3 Flash and DeepSeek V4.1 Flash.
+Store the clean replay output and dependency audit with the result.
 
-## Trace, cache, and failure attribution
+## Cache and replay
 
-Content-address Lean transitions by environment lineage, normalized state, action text, Lean version, and timeout class. Content-address provider calls by model, prompt schema, state, candidates, and sampling parameters.
+Content-address persistent transitions by repository commit, toolchain, manifest, source-prefix hash, namespace/options state, helper-lineage source hash, replay prefix, action text, and resource class. Re-execute a cached transition when any environment component differs.
 
-A run log records every generated option, Lean result, Jev distribution, frontier operation, budget charge, and replay result. Offline replay validates hashes and performs no network calls.
+Content-address provider calls by exact model, prompt schema, complete state, options, resource bucket, and sampling parameters. Store raw response hashes without headers or credentials.
 
-Assign every failure one primary cause and retain supporting causes:
+Network-free decision replay reconstructs requests and verifies recorded choices. Fresh Lean replay independently re-elaborates accepted source. Report these as separate guarantees.
 
-- backend initialization, timeout, or replay failure;
-- no generated candidate;
-- candidate oracle failure under the search budget;
-- premise retrieval miss;
-- Jev ranking placed a successful branch below the frontier cutoff;
-- direct LLM produced no valid improving action;
-- structural generation produced no valid patch;
-- verified patch created unsolved obligations;
-- node, depth, cost, or wall-time budget exhaustion.
+## Failure evidence
 
-This taxonomy determines the next engineering change.
+Allow `unknown` and `budget_censored`. Assign a stronger cause only with evidence:
 
-## Delivery sequence
+- `backend_failure`: initialization, execution, recovery, or replay failed;
+- `no_generated_candidate`: no action was materialized;
+- `candidate_oracle_failure`: a separately budgeted audit found no successful continuation in the frozen candidate graph;
+- `retrieval_miss`: an audit identifies an admissible useful declaration absent from retrieved candidates;
+- `verification_failure`: generated text did not produce an accepted transition;
+- `retention_failure`: an audited successful successor was discarded after verification;
+- `ranking_or_scheduling_failure`: an audited successful branch was retained but remained below the execution cutoff;
+- `direct_generation_failure`: all direct candidates were invalid or non-progressing;
+- `helper_generation_failure`: every patch failed its contract;
+- `helper_continuation_failure`: an accepted patch left obligations unsolved;
+- `budget_censored`: a configured resource ceiling ended search;
+- `unknown`: available evidence does not distinguish causes.
 
-### 1. Backend spike
+Inject each failure class in scheduler and integration tests. The candidate oracle is an upper bound over an audited finite graph, not over all Lean proofs.
 
-Implement the Pantograph adapter and its seven acceptance tests. Use `lean-cache` for every Lake setup and build. Stop if the pinned backend cannot install helper declarations or replay branches reliably; evaluate a project-owned worker at that point.
+## Delivery plan
 
-### 2. Catalogue-only prover
+### 1. Pantograph feasibility spike
 
-Implement dynamic Lean action enumeration, transition caching, normalized deduplication, and bounded best-first search. Run without Jev to establish candidate-oracle coverage and deterministic baselines.
+Implement the ten gate tests and latency profile. Run every Lake setup and build through `lean-cache`. Decide whether Pantograph remains the backend.
 
-### 3. Jev path ranking
+### 2. Scheduler model
 
-Add sibling Choice and cross-node path-success questions. Compare Jev best-first, deterministic best-first, diverse beam, random ordering, and candidate oracle under matched Lean CPU and node budgets.
+Implement the theorem ledger and a pure deterministic scheduler simulator. Test goal selection, incremental batches, frontier capacity and eviction, age exploration, tie-breaking, fallback reserves, worker-loss invalidation, and every failure attribution.
 
-### 4. Direct generation
+### 3. Catalogue-only prover
 
-Add both allowed fallback models behind the direct-action contract. Compare catalogue-only, always-LLM, and Jev-first escalation at matched total cost.
+Connect current-version theorem holes to dynamic Lean suggestions, local applications, automation, retrieval, source replay, and dependency audit. Establish candidate coverage and an automation-portfolio baseline before adding Jev.
 
-### 5. Structural generation
+### 4. Jev ranking
 
-Add the three patch contracts and child environment lineages. Compile multiple patches before Jev ranks them. Measure patch validity, remaining-obligation solve rate, and final theorem solve rate.
+Add sibling preference, route selection, and bounded path estimates. Compare Jev best-first, deterministic best-first, diverse beam, random ordering, and audited candidate oracle under identical frozen candidates and theorem-level resource ceilings.
 
-### 6. External evaluation
+### 5. Direct and helper generation
 
-Use LeanDojo Benchmark 4 `novel_premises` for transition and Mathlib proof search, then miniCodeProps medium/hard for induction and helpers. Add LeanCat for library retrieval and TheoremBench for explicit versus generated helper structure.
+Add the two allowed direct-action providers. Then add complete lemma, generalization, and definition patches. Include helper-requiring integration tasks before any external benchmark gate.
 
-Freeze task selection, prompts, candidate budgets, and scoring configuration before live evaluation.
+### 6. Benchmark compatibility
+
+Run each external benchmark in its original environment with a compatible backend, or publish a frozen audited port with every changed or excluded task. LeanDojo Benchmark 4 uses Lean `v4.10.0-rc1`; miniCodeProps uses Lean `v4.9.0`. Neither is silently upgraded to the Pantograph 4.30 environment.
+
+Use LeanDojo `novel_premises` for Mathlib search, miniCodeProps medium/hard for induction and helpers, LeanCat for retrieval, and TheoremBench for helper structure. Freeze tasks, prompts, indexes, budgets, seeds, and source extraction before live calls. A foundation model may still have seen public test data; report that limitation.
 
 ## First end-to-end gate
 
-Run two frozen LeanDojo sets:
+Before external benchmarks, run frozen Lean 4.30 project tasks containing tactical, retrieval, generalization, lemma, and definition cases. Then run two compatible LeanDojo sets:
 
-- 100 randomly sampled test theorems for overall solve rate;
-- 100 test theorems with at least three recorded steps that survive the automation prepass.
+- 100 random test theorems for overall solve rate;
+- 100 theorems with at least three recorded steps that survive the frozen automation portfolio.
 
-For each set report deterministic automation, catalogue-only best-first, Jev-ranked search, direct LLM, and full Jev-first search. Match Lean CPU, node limits, and provider-token budgets where the policies permit it.
+For ranking-only comparisons, use identical frozen candidate graphs. For end-to-end comparisons, apply common wall, Lean CPU, and provider-token ceilings and report how policies generated different candidates.
 
 Proceed to miniCodeProps when the controller:
 
-- replays every claimed proof cleanly;
-- provides a primary diagnosis for every failure;
-- demonstrates candidate-oracle headroom over deterministic search;
-- demonstrates either higher solve rate or lower cost than direct generation;
-- completes network-free trace replay.
+- replays and dependency-audits every claimed proof;
+- reports all speculative work, recovery, discarded patches, and replay cost;
+- shows candidate-oracle headroom over deterministic scheduling;
+- improves solve rate or cost over direct generation on the automation-resistant set;
+- demonstrates all three complete helper contracts;
+- completes network-free decision replay and fresh Lean replay.
 
 ## First CLI
-
-The first user-facing command is:
 
 ```bash
 python3 -m jevlean.prove \
@@ -286,14 +344,14 @@ python3 -m jevlean.prove \
   --config configs/mvp.toml
 ```
 
-It writes a proof artifact, optional private declarations, a clean-replay result, and a machine-readable run trace. Benchmark runners call the same controller API.
+The command writes submitted Lean source, helper declarations, dependency audit, clean replay result, and a machine-readable run trace. Benchmark runners call the same controller API.
 
 ## References
 
 - Search architecture report: https://bot.jesyspa.dev/lean/jev/search-architecture-20260917/
 - Lean interface report: https://bot.jesyspa.dev/lean/jev/lean-interface-20260917/
 - LeanDojo: https://github.com/lean-dojo/LeanDojo
-- Pantograph: https://github.com/stanford-centaur/Pantograph
+- Pantograph: https://github.com/stanford-centaur/Pantograph/tree/7076ab3632b5de67a4f83ab259b23b37acaea1d0
 - miniCodeProps: https://github.com/cmu-l3/minicodeprops-eval
 - LeanCat: https://arxiv.org/abs/2512.24796
 - TheoremBench: https://arxiv.org/abs/2606.09450
