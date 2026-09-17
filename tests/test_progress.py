@@ -3,6 +3,7 @@ import unittest
 
 from jevlean import MODEL
 from jevlean.progress import (
+    compute_metrics,
     generate_actions,
     load_data,
     payload_for,
@@ -52,6 +53,15 @@ class ProgressBenchmarkTests(unittest.TestCase):
 
     def test_prompt_freeze_reconstructs_every_request(self) -> None:
         verify_freeze(self.data)
+
+    def test_committed_trace_and_metrics_replay(self) -> None:
+        metrics = compute_metrics()
+        self.assertEqual(metrics["model"], MODEL)
+        self.assertEqual(metrics["requests"], 34)
+        self.assertEqual(metrics["progress"]["heldout_n"], 15)
+        self.assertEqual(metrics["progress"]["oracle_solved"], 15)
+        self.assertEqual(metrics["lemma"]["retrieval_recall"], 10)
+        self.assertTrue(all(row["helper_verified"] for row in metrics["routing"]["rows"]))
 
 
 if __name__ == "__main__":

@@ -1,109 +1,95 @@
-# Jev-first Lean proof-search experiment
+# Jev ranking for verified Lean proof progress
 
 ## Result
 
-This small study supports continuing with a Jev-first controller, but not deploying one yet. Jev selected a Lean-verified successful action on 11 of 12 synthetic goals. It identified all three states labeled as needing an auxiliary declaration and all eight useful lemmas in bounded candidate sets. It did not identify any of the three states labeled for direct LLM tactic fallback.
+On 15 held-out synthetic Lean goals, Jev ordering found a verified useful next action within three attempts on 14 goals (93.3%). Aesop-first ordering solved 13 (86.7%), the deterministic ordering solved 11 (73.3%), seeded random ordering was expected to solve 8.234 (54.9%), and an oracle over the generated candidates solved all 15.
 
-The practical architecture is therefore a probability-ranked catalog with Lean verification, followed by separate direct-proof and structural-patch fallback paths. A single greedy Jev choice is insufficient.
+This is evidence that Jev can rank structural next steps, not evidence of end-to-end proof-search performance. The bounded continuations were written by the benchmark author and make many intended structural transitions recognizable.
 
-## Setup
+## Operational protocol
 
-The benchmark uses public synthetic goals modeled on proof shapes observed in the public `sipser` Lean formalization: direct premises, definitional equality, simplification, arithmetic, extensionality, propositional reasoning, list induction, closure lifting, accumulator generalization, and one-hole contexts. No `sipser` source text was sent to TypeSafe.
+The experiment changes the question from “which tactic closes?” to “which generated action has a verified path to a proof?” For each action, Lean checks both:
+
+1. whether the action closes immediately; and
+2. whether the action is accepted and one of at most three frozen continuation tactics closes every successor goal.
+
+An action is useful exactly when either check compiles. No success label comes from author judgment. The committed matrix contains 18 initial states, 150 generated candidates, immediate-close results, and bounded-continuation results. Twelve held-out Jev top choices were useful multi-step transitions rather than immediate proofs. Nine of 15 held-out cases had no immediate proof from any of `aesop`, `simp`, `omega`, `ring`, or `rfl`; Aesop alone closed 5 of 15.
+
+Concrete candidates come from a fixed standard set, `exact` and `apply` instantiations of named local hypotheses, induction/cases actions for local inductive variables, structural templates such as `funext x`, and top-six token-overlap retrieval from a frozen 32-declaration Mathlib index. Lean verifies invalid as well as valid candidates.
+
+## Held-out ordering results
+
+All policies receive the same candidates, continuations, and three-action execution budget. “Aesop-first” tries Aesop and then the deterministic order. The random result is the mean over 2,000 seeded permutations per case. The oracle puts any verified useful candidate first.
+
+| Ordering | Solved within 3 | Rate |
+| --- | ---: | ---: |
+| Jev probability order | 14/15 | 93.3% |
+| Aesop-first | 13/15 | 86.7% |
+| Deterministic local/retrieval/structural order | 11/15 | 73.3% |
+| Seeded random expectation | 8.234/15 | 54.9% |
+| Verified-candidate oracle | 15/15 | 100% |
+
+Jev ranked a useful action first on 12 of 15 goals. It missed the budget on the rewrite-and-ring case: it preferred `ring`, while `aesop` followed by the frozen `ring` continuation was the only useful generated path. On the left-inverse case, it ranked an invalid local `apply h` first and the useful retrieved injectivity theorem second. On the Finset cardinality case, the useful action appeared third.
+
+## Separate lemma retrieval test
+
+Ten held-out goals use deterministic top-six retrieval from the frozen compact index. Each candidate receives the same explicit local arguments and is checked by `exact`; this prevents a name label from serving as the success criterion.
+
+| Policy | Verified useful lemma at top 1 |
+| --- | ---: |
+| Jev | 10/10 |
+| Retrieval score alone | 7/10 |
+
+The retriever included at least one verified lemma for all 10 goals. This is a controlled ranking test, not realistic Mathlib-scale retrieval: the index is small and manually assembled, and the signatures remain relatively distinctive.
+
+## Separate structural-helper routing test
+
+Six held-out states compare `direct_action` with `structural_helper`. The operational route is direct if any frozen generated action plus continuation compiles; otherwise it is helper, provided the supplied helper patch compiles. All six helper patches are checked by Lean.
+
+| Route | Jev correct |
+| --- | ---: |
+| Direct action | 3/3 |
+| Structural helper | 2/3 |
+| Overall | 5/6 |
+
+Jev incorrectly routed the accumulator-generalization case to direct action. No direct candidate passed the bounded check; the generalized induction helper compiled.
+
+## Freeze, model, and cost
+
+The benchmark, generator, retrieval index, questions, and all reconstructed request hashes were committed in `d3ca884` before the live calls. `data/progress-prompt-freeze.json` rejects any changed request. The 3 calibration progress cases are excluded from the 15-case headline result; all 10 lemma and 6 routing cases are held out. No prompt or candidate changed after the calls.
 
 - Lean: `leanprover/lean4:v4.30.0`
 - Mathlib: `v4.30.0`, commit `c5ea00351c28e24afc9f0f84379aa41082b1188f`
-- Requested model: `jev-1.13.0`
-- Resolved model in every response: `jev-1.13.0`
-- Live requests: 28, each containing one independent `Choice`
-- Recorded input/output tokens: 25,783 / 3,529
-- Sequential API latency: 15.107 seconds total, 0.540 seconds/request mean
-- Estimated Jev cost at the documented $0.042/M input-token price: $0.001083
+- Requested and resolved model: `jev-1.13.0` for all 34 requests
+- Tokens: 25,123 input; 2,713 output
+- Sequential API latency: 18.519925 seconds total; 0.544704 seconds/request mean
+- Estimated input cost at the documented $0.042 per million input tokens: $0.001055166
+- Actual billed cost: unavailable because the API responses provide usage but no currency amount
 
-The experiment made one recorded pass. It did not tune prompts against a held-out split.
+No fallback generative LLM was called. The trace stores public payload hashes, exact response bodies and hashes, usage, model IDs, and latency. It contains no request headers or credentials.
 
-## Tactic selection
+## Limitations
 
-Code enumerated the same 20-action catalog for every goal. The catalog includes premise closure, reflexivity, simplification, Aesop, Omega, numeric normalization, constructors, extensionality, function extensionality, contradiction, propositional automation, linear arithmetic, ring normalization, decision procedures, list cases/induction, conjunction construction, and an existential witness. Two explicit options route to direct-LLM or helper-declaration fallback.
+- The study is one deterministic-looking live pass over 15 synthetic held-out progress cases.
+- The benchmark author chose the bounded continuations. Freezing prevents post-result tuning, but does not remove design bias.
+- A compiled action-plus-continuation verifies a successor path but the artifact does not normalize or compare the intermediate pretty-printed goal state.
+- Candidate generation uses metadata about local names instead of reading live Lean goals through an editor protocol.
+- The compact retrieval index does not measure Mathlib-scale recall, search latency, or confusable-premise density.
+- Budgets count attempted candidates, not matched Lean CPU time; tactic runtimes are not reported.
+- Random results are seeded Monte Carlo estimates. The oracle only ranges over generated candidates.
+- Structural routing measures whether a supplied patch is needed under this bounded catalog, not whether no direct Lean proof exists.
 
-Every one of the 240 goal/action pairs was checked by Lean in one serial process. A tactic counts as successful only when it closes the theorem.
+The next useful study should run the controller against real frozen theorem holes, extract successor states from Lean, retrieve from a full declaration index, and compare policies at matched Lean CPU budgets.
 
-| Top-1 policy | Solved | Rate |
-| --- | ---: | ---: |
-| Jev choice | 11/12 | 91.7% |
-| Always `aesop` | 10/12 | 83.3% |
-| Fixed first action (`assumption`) | 1/12 | 8.3% |
-| Seeded random action | 3/12 | 25.0% |
-| Uniform-random expectation from the verified matrix | 2.65/12 | 22.1% |
-| Oracle: any catalog action | 12/12 | 100% |
-
-Jev's failure was set distributivity. It selected `ext <;> simp`, which leaves a propositional distributivity goal; `aesop` was the only successful catalog action. The selected answer had probability 0.62 and confidence 0.59. Conversely, the correct list-length selection had confidence 0.37 in the committed pass, so confidence is not a correctness certificate or an obvious universal gate.
-
-The catalog includes case-specific templates such as induction on a list named `xs`. A real controller must instantiate templates from local syntax and try actions in probability order. The 12/12 oracle result shows that Jev's one miss can be recovered without invoking an LLM.
-
-## Fallback recognition
-
-Eight labeled routing states tested three controller outcomes: use the listed catalog, request a direct LLM tactic, or request an auxiliary lemma/definition.
-
-| Gold route | Correct | Recall |
-| --- | ---: | ---: |
-| Listed action | 2/2 | 100% |
-| Direct LLM tactic | 0/3 | 0% |
-| Helper declaration | 3/3 | 100% |
-| Overall | 5/8 | 62.5% |
-
-An always-`listed_action` baseline scores 2/8 (25%). Jev correctly recognized the accumulator-generalization, closure-lifting, and compositional-context cases as structural. It routed all three direct-fallback cases to the listed catalog, including one wrong decision with confidence 0.85.
-
-These labels are author judgments, not outcomes from a complete search. One named-hypothesis case may in fact be solvable by broad automation, which would make the direct-fallback label debatable. The next benchmark must define routing labels operationally: exhaust a fixed catalog and budget, then distinguish a verified direct generated action from a verified helper patch.
-
-No generative LLM was invoked in this pass. The experiment measures the proposed gate, not fallback solve quality, provider quality, or end-to-end cost.
-
-## Bounded lemma selection
-
-Each of eight tasks gave Jev five named lemmas with short signatures.
-
-| Top-1 policy | Correct | Rate |
-| --- | ---: | ---: |
-| Jev choice | 8/8 | 100% |
-| Token-overlap heuristic | 4/8 | 50% |
-| First candidate | 2/8 | 25% |
-| Seeded random candidate | 2/8 | 25% |
-
-Every Jev lemma choice had reported confidence 1.0. This is a sanity check, not evidence for realistic premise retrieval: the correct signature closely matches the goal, candidate sets are small, and distractors are easy. A useful follow-up must use bounded candidates returned by actual environment search, with confusable declarations and proof verification after selection.
-
-## Trace safety and reproduction
-
-`artifacts/jev-1.13.0-trace.jsonl` stores the exact raw response body, its SHA-256 hash, request hash, public case ID, model metadata, token usage, and latency. It does not store request headers, API keys, or external source payloads. Requests are reconstructed from `data/benchmark.json`; `verify_trace` rejects stale request hashes, malformed probabilities, changed raw responses, and model-metadata mismatches.
-
-`artifacts/lean-outcomes.json` contains only public case/action IDs and verified booleans. Replay needs no network access:
+## Reproduce
 
 ```bash
 lean-cache use .
 lean-cache check-env
 lean-cache build --wait .
 python3 -m unittest discover -s tests -v
-python3 -m jevlean.experiment check-lean
-python3 -m jevlean.experiment metrics
+python3 -m jevlean.progress check-lean
+python3 -m jevlean.progress metrics
 ```
 
-The Lean matrix checker uses one process to fit a modest machine.
-
-## Limitations
-
-- Twelve tactic goals, eight routing states, and eight lemma tasks are too small for confidence intervals or threshold calibration.
-- The goals are synthetic and simpler than much of `sipser`.
-- The same benchmark informed question design and evaluation.
-- Only one live pass is reported; model repeatability was not measured.
-- Top-1 closure ignores useful successor states and multi-step search.
-- Routing labels were not established by exhaustive catalog and LLM runs.
-- The fixed catalog does not yet generate terms from local hypotheses or variable names.
-- The premise task does not test retrieval recall.
-- No direct-LLM, helper-patch, or fully LLM-based solving baseline was run.
-- Latency is sequential API latency and excludes Lean startup/build time.
-
-## Recommended next architecture
-
-Build a serial external controller that generates concrete actions from each local context, asks Jev for one `Choice`, and executes actions in descending probability until one closes or yields a useful verified successor. Keep a bounded best-first queue rather than committing greedily. Use deterministic goal-count and duplicate-state checks outside Jev.
-
-Treat `llm_tactic_fallback` and `llm_helper_fallback` as separate contracts. Direct fallback returns tactics or terms. Structural fallback returns private helper declarations plus a revised proof and is compiled in a sandbox module. Also trigger direct fallback after the verified catalog budget is exhausted, because this study shows that Jev can over-predict catalog coverage.
-
-The next decision gate is a held-out benchmark of at least 100 real theorem holes with matched Lean CPU and model budgets. Measure end-to-end verified solve rate for deterministic automation, Jev-ranked catalog search, direct LLM solving, and Jev-first search with both fallback paths. Add realistic premise retrieval and verify every selected premise through an executed action.
+Replay and Lean verification need no network credential. Do not run `freeze` unless intentionally defining a new experiment.

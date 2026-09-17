@@ -1,0 +1,625 @@
+{
+  "actual_billed_cost_usd": null,
+  "estimated_input_cost_usd_at_0_042_per_million": 0.001055166,
+  "input_tokens": 25123,
+  "latency_seconds_total": 18.519925,
+  "lemma": {
+    "jev_top1": 10,
+    "n": 10,
+    "retrieval_first_top1": 7,
+    "retrieval_recall": 10,
+    "rows": [
+      {
+        "candidates": [
+          "Finset.card_union_of_disjoint",
+          "Finset.card_union",
+          "Finset.card_inter_le_left",
+          "Finset.sum_union",
+          "Finset.sum_inter_add_sum_diff",
+          "Function.LeftInverse.injective"
+        ],
+        "case_id": "l01_card_union",
+        "choice": "Finset.card_union_of_disjoint",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "Finset.card_union_of_disjoint"
+        ]
+      },
+      {
+        "candidates": [
+          "Function.LeftInverse.injective",
+          "Function.Injective.comp",
+          "Function.RightInverse.surjective",
+          "Function.Surjective.comp",
+          "List.reverse_injective",
+          "Finset.card_union_of_disjoint"
+        ],
+        "case_id": "l02_left_inverse",
+        "choice": "Function.LeftInverse.injective",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "Function.LeftInverse.injective"
+        ]
+      },
+      {
+        "candidates": [
+          "List.length_append",
+          "List.length_map",
+          "List.length_reverse",
+          "List.map_append",
+          "List.reverse_append",
+          "List.reverse_injective"
+        ],
+        "case_id": "l03_length_append",
+        "choice": "List.length_append",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "List.length_append"
+        ]
+      },
+      {
+        "candidates": [
+          "List.reverse_injective",
+          "List.length_reverse",
+          "List.reverse_append",
+          "List.reverse_inj",
+          "List.reverse_reverse",
+          "Function.LeftInverse.injective"
+        ],
+        "case_id": "l04_reverse_injective",
+        "choice": "List.reverse_injective",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "List.reverse_injective"
+        ]
+      },
+      {
+        "candidates": [
+          "Nat.mod_lt",
+          "Nat.mod_le",
+          "Nat.add_le_add",
+          "Nat.add_le_add_right",
+          "Nat.add_comm",
+          "Nat.add_assoc"
+        ],
+        "case_id": "l05_mod_lt",
+        "choice": "Nat.mod_lt",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "Nat.mod_lt"
+        ]
+      },
+      {
+        "candidates": [
+          "Set.inter_comm",
+          "Set.union_comm",
+          "Set.inter_assoc",
+          "Set.Subset.trans",
+          "Set.inter_subset_left",
+          "Set.inter_subset_right"
+        ],
+        "case_id": "l06_set_inter_comm",
+        "choice": "Set.inter_comm",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "Set.inter_comm"
+        ]
+      },
+      {
+        "candidates": [
+          "List.length_map",
+          "List.map_append",
+          "List.length_append",
+          "List.length_reverse",
+          "List.reverse_append",
+          "List.reverse_injective"
+        ],
+        "case_id": "l07_map_append",
+        "choice": "List.map_append",
+        "correct": true,
+        "first_correct": false,
+        "retrieval_recall": true,
+        "useful": [
+          "List.map_append"
+        ]
+      },
+      {
+        "candidates": [
+          "Finset.card_union_of_disjoint",
+          "Finset.sum_union",
+          "Finset.card_union",
+          "Finset.card_inter_le_left",
+          "Finset.sum_inter_add_sum_diff",
+          "Function.LeftInverse.injective"
+        ],
+        "case_id": "l08_sum_union",
+        "choice": "Finset.sum_union",
+        "correct": true,
+        "first_correct": false,
+        "retrieval_recall": true,
+        "useful": [
+          "Finset.sum_union"
+        ]
+      },
+      {
+        "candidates": [
+          "Set.Subset.trans",
+          "Set.inter_comm",
+          "Set.union_comm",
+          "Set.inter_assoc",
+          "Set.inter_subset_left",
+          "Set.inter_subset_right"
+        ],
+        "case_id": "l09_subset_trans",
+        "choice": "Set.Subset.trans",
+        "correct": true,
+        "first_correct": true,
+        "retrieval_recall": true,
+        "useful": [
+          "Set.Subset.trans"
+        ]
+      },
+      {
+        "candidates": [
+          "Nat.mod_lt",
+          "Nat.mod_le",
+          "Nat.add_le_add",
+          "Nat.add_le_add_right",
+          "Nat.add_comm",
+          "Nat.add_assoc"
+        ],
+        "case_id": "l10_add_le_add",
+        "choice": "Nat.add_le_add",
+        "correct": true,
+        "first_correct": false,
+        "retrieval_recall": true,
+        "useful": [
+          "Nat.add_le_add"
+        ]
+      }
+    ]
+  },
+  "model": "jev-1.13.0",
+  "output_tokens": 2713,
+  "progress": {
+    "aesop_first_solved": 13,
+    "aesop_one_shot_closed": 5,
+    "attempt_budget": 3,
+    "deterministic_solved": 11,
+    "heldout_n": 15,
+    "jev_solved": 14,
+    "jev_top1_multi_step": 12,
+    "jev_top1_useful": 12,
+    "no_standard_one_shot_closed": 9,
+    "oracle_solved": 15,
+    "random_expected_solved": 8.234,
+    "rows": [
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p01_tally_append",
+        "jev_choice": "induction_xs",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.4215,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "calibration",
+        "useful_candidates": [
+          "induction_xs"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p02_tally_map",
+        "jev_choice": "induction_xs",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.4275,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "calibration",
+        "useful_candidates": [
+          "induction_xs"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p03_sumSq_append",
+        "jev_choice": "induction_xs",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.431,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "calibration",
+        "useful_candidates": [
+          "induction_xs"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p04_sumSq_map",
+        "jev_choice": "induction_xs",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.4305,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "induction_xs"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 8,
+        "case_id": "p05_totalFrom",
+        "jev_choice": "induction_xs_generalizing_acc",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.375,
+        "ranks": {
+          "aesop_first": 4,
+          "deterministic": 3,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "induction_xs_generalizing_acc"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p06_tree_leaves_mirror",
+        "jev_choice": "induction_t",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.437,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "induction_t"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p07_tree_leaves_map",
+        "jev_choice": "induction_t",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.415,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "induction_t"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p08_tree_mirror_involutive",
+        "jev_choice": "induction_t",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.435,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "induction_t"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 7,
+        "case_id": "p09_tree_map_mirror",
+        "jev_choice": "induction_t",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.4375,
+        "ranks": {
+          "aesop_first": 3,
+          "deterministic": 2,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "induction_t"
+        ]
+      },
+      {
+        "aesop_immediate": true,
+        "candidate_count": 6,
+        "case_id": "p10_set_distrib",
+        "jev_choice": "ext_x",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.797,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 1,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "ext_x"
+        ]
+      },
+      {
+        "aesop_immediate": true,
+        "candidate_count": 8,
+        "case_id": "p11_function_ext_arith",
+        "jev_choice": "funext_x",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.6455,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 3,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "funext_x"
+        ]
+      },
+      {
+        "aesop_immediate": true,
+        "candidate_count": 6,
+        "case_id": "p12_exists_square",
+        "jev_choice": "witness_square",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.9485,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 1,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "simp",
+          "witness_square"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 8,
+        "case_id": "p13_conjunction_arith",
+        "jev_choice": "constructor",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.986,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 3,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "constructor",
+          "omega",
+          "ring",
+          "simp"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 10,
+        "case_id": "p14_nat_induction",
+        "jev_choice": "intro_n",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.5205,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 5,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "intro_n"
+        ]
+      },
+      {
+        "aesop_immediate": true,
+        "candidate_count": 7,
+        "case_id": "p15_append_assoc",
+        "jev_choice": "induction_xs",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": true,
+        "random_budget_solve_rate": 0.9665,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 1,
+          "jev": 1,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "cases_xs",
+          "induction_xs",
+          "simp"
+        ]
+      },
+      {
+        "aesop_immediate": true,
+        "candidate_count": 13,
+        "case_id": "p16_finset_card_union",
+        "jev_choice": "apply_finset_card_union_of_disjoint",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": false,
+        "random_budget_solve_rate": 0.416,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 12,
+          "jev": 3,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop",
+          "simp"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 15,
+        "case_id": "p17_left_inverse",
+        "jev_choice": "apply_h",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": false,
+        "random_budget_solve_rate": 0.1935,
+        "ranks": {
+          "aesop_first": 8,
+          "deterministic": 7,
+          "jev": 2,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "apply_function_leftinverse_injective"
+        ]
+      },
+      {
+        "aesop_immediate": false,
+        "candidate_count": 13,
+        "case_id": "p18_rewrite_ring",
+        "jev_choice": "ring",
+        "jev_choice_immediate": false,
+        "jev_choice_multi_step": false,
+        "random_budget_solve_rate": 0.2305,
+        "ranks": {
+          "aesop_first": 1,
+          "deterministic": 13,
+          "jev": 5,
+          "oracle": 1
+        },
+        "split": "heldout",
+        "useful_candidates": [
+          "aesop"
+        ]
+      }
+    ]
+  },
+  "requests": 34,
+  "routing": {
+    "direct_correct": 3,
+    "direct_n": 3,
+    "helper_correct": 2,
+    "helper_n": 3,
+    "jev_correct": 5,
+    "n": 6,
+    "rows": [
+      {
+        "case_id": "r01_accumulator",
+        "choice": "direct_action",
+        "correct": false,
+        "direct_verified": false,
+        "helper_verified": true,
+        "operational_route": "structural_helper"
+      },
+      {
+        "case_id": "r02_tree_involution",
+        "choice": "structural_helper",
+        "correct": true,
+        "direct_verified": false,
+        "helper_verified": true,
+        "operational_route": "structural_helper"
+      },
+      {
+        "case_id": "r03_tally_append",
+        "choice": "structural_helper",
+        "correct": true,
+        "direct_verified": false,
+        "helper_verified": true,
+        "operational_route": "structural_helper"
+      },
+      {
+        "case_id": "r04_direct_ext",
+        "choice": "direct_action",
+        "correct": true,
+        "direct_verified": true,
+        "helper_verified": true,
+        "operational_route": "direct_action"
+      },
+      {
+        "case_id": "r05_direct_witness",
+        "choice": "direct_action",
+        "correct": true,
+        "direct_verified": true,
+        "helper_verified": true,
+        "operational_route": "direct_action"
+      },
+      {
+        "case_id": "r06_direct_local",
+        "choice": "direct_action",
+        "correct": true,
+        "direct_verified": true,
+        "helper_verified": true,
+        "operational_route": "direct_action"
+      }
+    ]
+  }
+}

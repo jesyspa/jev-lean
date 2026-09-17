@@ -460,6 +460,13 @@ def compute_metrics() -> dict[str, Any]:
             "jev_top1_useful": sum(row["ranks"]["jev"] == 1 for row in heldout),
             "jev_top1_multi_step": sum(row["jev_choice_multi_step"] for row in heldout),
             "aesop_one_shot_closed": sum(row["aesop_immediate"] for row in heldout),
+            "no_standard_one_shot_closed": sum(
+                not any(
+                    outcomes["progress"][row["case_id"]][action]["immediate_close"]
+                    for action in ("aesop", "simp", "omega", "ring", "rfl")
+                )
+                for row in heldout
+            ),
             "rows": rows,
         },
         "lemma": {"n": len(lemma_rows), "retrieval_recall": sum(row["retrieval_recall"] for row in lemma_rows), "jev_top1": sum(row["correct"] for row in lemma_rows), "retrieval_first_top1": sum(row["first_correct"] for row in lemma_rows), "rows": lemma_rows},
