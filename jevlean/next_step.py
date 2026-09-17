@@ -53,7 +53,7 @@ def source_candidates(source_root: Path) -> list[dict[str, Any]]:
         starts = [index for index, line in enumerate(lines) if DECL_RE.match(line)]
         for start in starts:
             next_top = next(
-                (index for index in range(start + 1, len(lines)) if TOP_LEVEL_RE.match(lines[index]) and not lines[index].startswith("/-")),
+                (index for index in range(start + 1, len(lines)) if TOP_LEVEL_RE.match(lines[index])),
                 len(lines),
             )
             header_end = next((index for index in range(start, next_top) if ":= by" in lines[index]), None)
@@ -65,11 +65,11 @@ def source_candidates(source_root: Path) -> list[dict[str, Any]]:
                 if not match:
                     continue
                 action = line.strip()
-                if len(match.group("indent")) > 4:
+                if len(match.group("indent")) != 2:
                     continue
-                if ":= by" in action or action.endswith((";<;>", "<;>", ";")) or "--" in action:
+                if ":= by" in action or action.endswith((";<;>", "<;>", ";", ",", ":=", " with", " using", " ↔", " ∧", " ∨", " ∪", " ∩", " →", " =", " =>")) or "--" in action:
                     continue
-                if action.startswith(("have ", "refine ")) and action.count("(") != action.count(")"):
+                if any(action.count(left) != action.count(right) for left, right in (("(", ")"), ("[", "]"), ("{", "}"), ("⟨", "⟩"))):
                     continue
                 candidates.append(
                     {
@@ -308,7 +308,7 @@ def build_dataset(source_root: Path) -> dict[str, Any]:
         "schema_version": 1,
         "seed": SEED,
         "sample_size": len(cases),
-        "sampling": "Family-balanced deterministic sample from complete one-line tactic commands in theorem/lemma proof blocks; source files over 30 KB, bullet-leading commands, multiline tactic openers, and trailing combinators are excluded; at most 15 samples per file.",
+        "sampling": "Family-balanced deterministic sample from complete one-line tactic commands at the base indentation of theorem/lemma proof blocks; source files over 30 KB, nested bullet/case commands, unbalanced delimiters, multiline tactic/layout openers, and trailing combinators are excluded; at most 15 samples per file.",
         "source": {
             "project": "sipser",
             "url": SOURCE_URL,
@@ -451,8 +451,10 @@ def variant_text(source_root: Path, case: dict[str, Any], action: str, mode: str
     if mode == "continuation":
         lines[index] = case["indent"] + action
     elif mode == "isolated":
-        lines[index] = case["indent"] + f"({action}) <;> (jev_trace_after {case['id']}; sorry)"
         del lines[index + 1 : case["proof_end_line"]]
+        lines[index] = case["indent"] + action
+        lines.insert(index + 1, case["indent"] + f"all_goals (jev_trace_after {case['id']}; sorry)")
+        lines.insert(index + 2, "  all_goals sorry")
     else:
         raise ValueError(mode)
     return "\n".join(inject_trace_helper(lines)) + "\n"
@@ -479,10 +481,8 @@ def classify_one(source_root: Path, case: dict[str, Any], selected: str) -> dict
     if isolated.returncode != 0:
         return {"classification": "invalid", "isolated_returncode": isolated.returncode, "after_states": []}
     states = after_states(isolated.stdout, case["id"])
-    if states and all(state == case["pre_state"] for state in states):
+    if states and states[0] == case["pre_state"]:
         return {"classification": "no_progress", "isolated_returncode": 0, "after_states": states}
-    if not states:
-        return {"classification": "verified_alternative", "verification": "selected action completed all remaining goals", "isolated_returncode": 0, "after_states": []}
     continuation = run_lean(source_root, variant_text(source_root, case, selected, "continuation"), timeout=600.0)
     if continuation.returncode == 0:
         classification = "verified_alternative"
@@ -524,9 +524,9 @@ def check_selections(source_root: Path) -> dict[str, Any]:
         "schema_version": 1,
         "criteria": {
             "invalid": "The isolated prefix plus selected action failed in Lean before successor goals could be admitted.",
-            "no_progress": "Lean accepted the action, but every printed successor proof state was byte-identical to the frozen pre-state.",
+            "no_progress": "Lean accepted the action, but its first printed successor proof state was byte-identical to the frozen pre-state.",
             "valid_unverified_continuation": "Lean accepted the action and changed the state, but substituting it for the recorded action while retaining the recorded proof suffix did not compile the theorem.",
-            "verified_alternative": "The selected action closed all remaining goals, or substituting it and retaining the recorded proof suffix compiled the theorem.",
+            "verified_alternative": "Substituting the selected action and retaining the recorded proof suffix compiled the theorem.",
             "priority": ["invalid", "no_progress", "verified_alternative", "valid_unverified_continuation"],
         },
         "source_revision": SOURCE_REVISION,
@@ -554,7 +554,7 @@ def metrics() -> dict[str, Any]:
         else:
             classification = outcomes["misses"][case["id"]]["classification"]
             semantic = classification == "verified_alternative"
-        deterministic = min(case["options"], key=lambda option: option["generation_rank"])["id"]
+        deterministic = min(case["options"], key=lambda option: option["tactic"])["id"]
         aesop = next((option["id"] for option in case["options"] if option["tactic"] == "aesop"), deterministic)
         random_choice = rng.choice(case["options"])["id"]
         baseline_choices = {"random_seeded": random_choice, "deterministic": deterministic, "aesop_first": aesop, "oracle": case["recorded_option"]}
