@@ -2,7 +2,7 @@
 
 Experiments on Jev-guided Lean proof search. Lean generates or executes concrete actions and remains the sole correctness oracle; Jev is evaluated as a ranker of promising proof steps.
 
-No end-to-end prover exists yet.
+`jev?` is now a small Lean-native closing tactic. It generates local `exact` actions and bounded standard automation, checks each from a restored tactic state, and emits a replayable `Try this` replacement. It only accepts actions that close every current goal. The external `python3 -m jevlean.rank` command ranks caller-supplied action identifiers with Jev and uses catalogue order if credentials, execution, or response validation fail.
 
 ## Results so far
 
@@ -58,6 +58,7 @@ lean-cache check-env
 lean-cache build --wait .
 python3 -m unittest discover -s tests -v
 python3 -m jevlean.progress metrics
+python3 -m jevlean.rank < rank-request.json
 python3 -m jevlean.next_step metrics
 ```
 
