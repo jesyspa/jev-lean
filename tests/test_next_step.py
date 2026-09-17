@@ -2,7 +2,7 @@ import json
 import unittest
 
 from jevlean import MODEL
-from jevlean.next_step import MAX_OPTIONS, load_data, payload_for, verify_freeze
+from jevlean.next_step import MAX_OPTIONS, load_data, metrics, payload_for, verify_freeze
 
 
 class NextStepBenchmarkTests(unittest.TestCase):
@@ -39,6 +39,16 @@ class NextStepBenchmarkTests(unittest.TestCase):
 
     def test_prompt_freeze_reconstructs(self) -> None:
         verify_freeze(self.data)
+
+    def test_final_trace_outcomes_and_metrics_replay(self) -> None:
+        result = metrics()
+        self.assertEqual(result["model"], MODEL)
+        self.assertEqual(result["n"], 100)
+        self.assertEqual(result["exact_match"], 57)
+        self.assertEqual(result["semantic_acceptability"], 58)
+        self.assertEqual(result["miss_classifications"]["invalid"], 12)
+        self.assertEqual(result["miss_classifications"]["valid_unverified_continuation"], 30)
+        self.assertEqual(result["miss_classifications"]["verified_alternative"], 1)
 
 
 if __name__ == "__main__":

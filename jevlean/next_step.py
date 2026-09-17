@@ -554,7 +554,16 @@ def metrics() -> dict[str, Any]:
         else:
             classification = outcomes["misses"][case["id"]]["classification"]
             semantic = classification == "verified_alternative"
-        deterministic = min(case["options"], key=lambda option: option["tactic"])["id"]
+        deterministic_priority = ["rfl", "simp", "assumption", "constructor", "omega", "aesop"]
+        deterministic = next(
+            (
+                option["id"]
+                for tactic in deterministic_priority
+                for option in case["options"]
+                if option["tactic"] == tactic
+            ),
+            min(case["options"], key=lambda option: option["tactic"])["id"],
+        )
         aesop = next((option["id"] for option in case["options"] if option["tactic"] == "aesop"), deterministic)
         random_choice = rng.choice(case["options"])["id"]
         baseline_choices = {"random_seeded": random_choice, "deterministic": deterministic, "aesop_first": aesop, "oracle": case["recorded_option"]}

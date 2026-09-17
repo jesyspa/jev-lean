@@ -1,0 +1,396 @@
+{
+  "criteria": {
+    "invalid": "The isolated prefix plus selected action failed in Lean before successor goals could be admitted.",
+    "no_progress": "Lean accepted the action, but every printed successor proof state was byte-identical to the frozen pre-state.",
+    "priority": [
+      "invalid",
+      "no_progress",
+      "verified_alternative",
+      "valid_unverified_continuation"
+    ],
+    "valid_unverified_continuation": "Lean accepted the action and changed the state, but substituting it for the recorded action while retaining the recorded proof suffix did not compile the theorem.",
+    "verified_alternative": "The selected action closed all remaining goals, or substituting it and retaining the recorded proof suffix compiled the theorem."
+  },
+  "misses": {
+    "ns001": {
+      "after_states": [
+        "case nil\nb : Bit\nh : [] ≠ [b]\n⊢ ∃ C,\n    Relation.ReflTransGen (singletonMachine b).Yields ((singletonMachine b).startConf []) C ∧\n      (singletonMachine b).IsRejecting C",
+        "case cons\nb head✝ : Bit\ntail✝ : List Bit\nh : head✝ :: tail✝ ≠ [b]\n⊢ ∃ C,\n    Relation.ReflTransGen (singletonMachine b).Yields ((singletonMachine b).startConf (head✝ :: tail✝)) C ∧\n      (singletonMachine b).IsRejecting C"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "cases w",
+      "selected_option": "A10",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns003": {
+      "after_states": [
+        "case left\n⊢ CompleteTrace [Input.one, Input.one] trace11 (conf [x, o, B] State.reject [])",
+        "case right\n⊢ machine.IsRejecting (conf [x, o, B] State.reject [])"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A09",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns004": {
+      "after_states": [
+        "case left\n⊢ CompleteTrace [Input.one, Input.hash, Input.one] trace1Hash1 (conf [x, h, x, B] State.accept [])",
+        "case right\n⊢ machine.IsAccepting (conf [x, h, x, B] State.accept [])"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A02",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns005": {
+      "after_states": [
+        "case left\n⊢ CompleteTrace [Input.one, Input.hash, Input.hash, Input.one] trace1HashHash1 (conf [x, h, h] State.reject [o])",
+        "case right\n⊢ machine.IsRejecting (conf [x, h, h] State.reject [o])"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A06",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns006": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "constructor",
+      "selected_option": "A05"
+    },
+    "ns007": {
+      "after_states": [
+        "case a\n⊢ Config.Equiv machine.blank (conf [] State.q1 [o, o]) (conf [] State.q1 [o, o])",
+        "case a\n⊢ List.Forall₂ (Config.Equiv machine.blank)\n    [conf [x] State.q3 [o], conf [x, o] State.q3 [], conf [x, o, B] State.reject []]\n    [conf [x] State.q3 [o], conf [x, o] State.q3 [B], conf [x, o, B] State.reject []]"
+      ],
+      "classification": "verified_alternative",
+      "continuation_returncode": 0,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A02",
+      "verification": "substituting the selected action and retaining the recorded suffix compiled the theorem"
+    },
+    "ns008": {
+      "after_states": [
+        "case left\n⊢ CompleteTrace [Input.zero] trace0 (conf [B, B] State.accept [])",
+        "case right\n⊢ machine.IsAccepting (conf [B, B] State.accept [])"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A03",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns012": {
+      "after_states": [
+        "case left\nΓ : Type v\nblank : Γ\nT₁ T₂ : Tape Γ\nh : Equiv blank T₁ T₂\nc : Γ\nd : Dir\n⊢ (Tape.move c d T₁).left = (Tape.move c d T₂).left",
+        "case right\nΓ : Type v\nblank : Γ\nT₁ T₂ : Tape Γ\nh : Equiv blank T₁ T₂\nc : Γ\nd : Dir\n⊢ ∃ n m, (Tape.move c d T₁).right ++ List.replicate n blank = (Tape.move c d T₂).right ++ List.replicate m blank"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A07",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns013": {
+      "after_states": [
+        "case L.left\nΓ : Type v\nblank : Γ\nT₁ T₂ : Tape Γ\nh : Equiv blank T₁ T₂\nc : Γ\nhl : T₁.left = T₂.left\n⊢ (Tape.move c Dir.L T₁).left = (Tape.move c Dir.L T₂).left",
+        "case L.right\nΓ : Type v\nblank : Γ\nT₁ T₂ : Tape Γ\nh : Equiv blank T₁ T₂\nc : Γ\nhl : T₁.left = T₂.left\n⊢ ∃ n m, (Tape.move c Dir.L T₁).right ++ List.replicate n blank = (Tape.move c Dir.L T₂).right ++ List.replicate m blank"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A01",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns015": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "simp",
+      "selected_option": "A02"
+    },
+    "ns019": {
+      "after_states": [
+        "case h\n⊢ ContextFreeGrammar.language ?w = languageA",
+        "case w\n⊢ ContextFreeGrammar (Fin 3)"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A04",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns021": {
+      "after_states": [
+        "case h.nil\n⊢ [] ∈ languageA ⊓ languageB ↔ [] ∈ aabbcc",
+        "case h.cons\nhead✝ : Fin 3\ntail✝ : List (Fin 3)\ntail_ih✝ : tail✝ ∈ languageA ⊓ languageB ↔ tail✝ ∈ aabbcc\n⊢ head✝ :: tail✝ ∈ languageA ⊓ languageB ↔ head✝ :: tail✝ ∈ aabbcc"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A07",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns023": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "apply hw",
+      "selected_option": "A09"
+    },
+    "ns024": {
+      "after_states": [
+        "case h\nT : Type u\ng h : ContextFreeGrammar T\nstarts : Finset (List (Symbol T (BinaryNT g h)))\ns : List (Symbol T (BinaryNT g h))\nhs : s ∈ starts\n⊢ ?w ∈ (binaryGrammar g h starts).rules ∧ ContextFreeRule.Rewrites ?w [Symbol.nonterminal none] s",
+        "case w\nT : Type u\ng h : ContextFreeGrammar T\nstarts : Finset (List (Symbol T (BinaryNT g h)))\ns : List (Symbol T (BinaryNT g h))\nhs : s ∈ starts\n⊢ ContextFreeRule T (binaryGrammar g h starts).NT"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A06",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns030": {
+      "after_states": [
+        "case a\n⊢ Function.LeftInverse ?g g",
+        "case g\n⊢ Y → X"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "apply Function.LeftInverse.injective",
+      "selected_option": "A04",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns037": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "induction w",
+      "selected_option": "A02"
+    },
+    "ns038": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "cases w",
+      "selected_option": "A02"
+    },
+    "ns043": {
+      "after_states": [
+        "case nil\nα : Type u_5\nσ : Type\ninst✝² : DecidableEq σ\ninst✝¹ : Fintype σ\nM : DFA α σ\ninst✝ : DecidablePred fun x => x ∈ M.accept\n⊢ (ofDFA M).toTable.toεNFA.eval [] = M.toNFA.toεNFA.eval []",
+        "case cons\nα : Type u_5\nσ : Type\ninst✝² : DecidableEq σ\ninst✝¹ : Fintype σ\nM : DFA α σ\ninst✝ : DecidablePred fun x => x ∈ M.accept\nhead✝ : α\ntail✝ : List α\ntail_ih✝ : (ofDFA M).toTable.toεNFA.eval tail✝ = M.toNFA.toεNFA.eval tail✝\n⊢ (ofDFA M).toTable.toεNFA.eval (head✝ :: tail✝) = M.toNFA.toεNFA.eval (head✝ :: tail✝)"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A09",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns045": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "simp",
+      "selected_option": "A06"
+    },
+    "ns047": {
+      "after_states": [
+        "case nil\nα : Type u_1\nσ₁ : Type u_3\nσ₂ : Type u_4\nM₁ : εNFA α σ₁\nM₂ : εNFA α σ₂\na : σ₁\nha : a ∈ M₁.start\n⊢ ∀ (s : σ₁) (y : List (Option α)) (b : σ₂),\n    M₁.IsPath a s y →\n      b ∈ M₂.accept →\n        (concatεNFA M₁ M₂).IsPath (Sum.inl s) (Sum.inr b) [] → (y ++ []).reduceOption ∈ M₁.accepts * M₂.accepts",
+        "case cons\nα : Type u_1\nσ₁ : Type u_3\nσ₂ : Type u_4\nM₁ : εNFA α σ₁\nM₂ : εNFA α σ₂\na : σ₁\nha : a ∈ M₁.start\nhead✝ : Option α\ntail✝ : List (Option α)\ntail_ih✝ :\n  ∀ (s : σ₁) (y : List (Option α)) (b : σ₂),\n    M₁.IsPath a s y →\n      b ∈ M₂.accept →\n        (concatεNFA M₁ M₂).IsPath (Sum.inl s) (Sum.inr b) tail✝ → (y ++ tail✝).reduceOption ∈ M₁.accepts * M₂.accepts\n⊢ ∀ (s : σ₁) (y : List (Option α)) (b : σ₂),\n    M₁.IsPath a s y →\n      b ∈ M₂.accept →\n        (concatεNFA M₁ M₂).IsPath (Sum.inl s) (Sum.inr b) (head✝ :: tail✝) →\n          (y ++ head✝ :: tail✝).reduceOption ∈ M₁.accepts * M₂.accepts"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction x",
+      "selected_option": "A02",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns054": {
+      "after_states": [
+        "case nil\nα : Type u_1\nσ : Type u_2\ninst✝¹ : DecidableEq σ\ninst✝ : Fintype σ\nT : εNFATable α σ\n⊢ T.accepts [] = true ↔ [] ∈ T.toεNFA.accepts",
+        "case cons\nα : Type u_1\nσ : Type u_2\ninst✝¹ : DecidableEq σ\ninst✝ : Fintype σ\nT : εNFATable α σ\nhead✝ : α\ntail✝ : List α\ntail_ih✝ : T.accepts tail✝ = true ↔ tail✝ ∈ T.toεNFA.accepts\n⊢ T.accepts (head✝ :: tail✝) = true ↔ head✝ :: tail✝ ∈ T.toεNFA.accepts"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A08",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns055": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "constructor",
+      "selected_option": "A09"
+    },
+    "ns061": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "rw [hM]",
+      "selected_option": "A05"
+    },
+    "ns065": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "simp",
+      "selected_option": "A04"
+    },
+    "ns069": {
+      "after_states": [
+        "case nil\nα : Type u_1\nσ : Type u_2\ninst✝¹ : Fintype σ\ninst✝ : DecidableEq σ\nT : εNFATable α σ\n⊢ (subsetTable T).toDFA.eval [] = T.reachable []",
+        "case cons\nα : Type u_1\nσ : Type u_2\ninst✝¹ : Fintype σ\ninst✝ : DecidableEq σ\nT : εNFATable α σ\nhead✝ : α\ntail✝ : List α\ntail_ih✝ : (subsetTable T).toDFA.eval tail✝ = T.reachable tail✝\n⊢ (subsetTable T).toDFA.eval (head✝ :: tail✝) = T.reachable (head✝ :: tail✝)"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A07",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns070": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "induction w",
+      "selected_option": "A02"
+    },
+    "ns071": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "rfl",
+      "selected_option": "A09"
+    },
+    "ns072": {
+      "after_states": [
+        "case nil\n⊢ additionCarryDFA.eval [] ∈ additionCarryDFA.accept ↔\n    littleRowValue Column3.bottom [] = littleRowValue Column3.top [] + littleRowValue Column3.middle []",
+        "case cons\nhead✝ : Column3\ntail✝ : List Column3\ntail_ih✝ :\n  additionCarryDFA.eval tail✝ ∈ additionCarryDFA.accept ↔\n    littleRowValue Column3.bottom tail✝ = littleRowValue Column3.top tail✝ + littleRowValue Column3.middle tail✝\n⊢ additionCarryDFA.eval (head✝ :: tail✝) ∈ additionCarryDFA.accept ↔\n    littleRowValue Column3.bottom (head✝ :: tail✝) =\n      littleRowValue Column3.top (head✝ :: tail✝) + littleRowValue Column3.middle (head✝ :: tail✝)"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A02",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns073": {
+      "after_states": [
+        "case nil\n⊢ comparisonDFA.eval [] ∈ comparisonDFA.accept ↔ rowValue Column2.top [] > rowValue Column2.bottom []",
+        "case cons\nhead✝ : Column2\ntail✝ : List Column2\ntail_ih✝ : comparisonDFA.eval tail✝ ∈ comparisonDFA.accept ↔ rowValue Column2.top tail✝ > rowValue Column2.bottom tail✝\n⊢ comparisonDFA.eval (head✝ :: tail✝) ∈ comparisonDFA.accept ↔\n    rowValue Column2.top (head✝ :: tail✝) > rowValue Column2.bottom (head✝ :: tail✝)"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A04",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns074": {
+      "after_states": [
+        "case left\n⊢ comparisonMemberExample ∈ comparisonLanguage",
+        "case right\n⊢ comparisonNonmemberExample ∉ comparisonLanguage"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A02",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns075": {
+      "after_states": [
+        "case nil\n⊢ [] ∈ binaryPowersDFA.accepts ↔ ∃ n, [] = 1 :: List.replicate n 0",
+        "case cons\nhead✝ : ℕ\ntail✝ : List ℕ\ntail_ih✝ : tail✝ ∈ binaryPowersDFA.accepts ↔ ∃ n, tail✝ = 1 :: List.replicate n 0\n⊢ head✝ :: tail✝ ∈ binaryPowersDFA.accepts ↔ ∃ n, head✝ :: tail✝ = 1 :: List.replicate n 0"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A04",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns076": {
+      "after_states": [
+        "case nil\n⊢ binaryPowersDFA.evalFrom BinaryPowerState.start [] = BinaryPowerState.power ↔ ∃ n, [] = 1 :: List.replicate n 0",
+        "case cons\nhead✝ : ℕ\ntail✝ : List ℕ\ntail_ih✝ :\n  binaryPowersDFA.evalFrom BinaryPowerState.start tail✝ = BinaryPowerState.power ↔ ∃ n, tail✝ = 1 :: List.replicate n 0\n⊢ binaryPowersDFA.evalFrom BinaryPowerState.start (head✝ :: tail✝) = BinaryPowerState.power ↔\n    ∃ n, head✝ :: tail✝ = 1 :: List.replicate n 0"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "induction w",
+      "selected_option": "A04",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns080": {
+      "after_states": [
+        "case h\nbase n : ℕ\nhb : 1 < base\nhn : n ≠ 0\n⊢ (base.digits n).reverse = [0]"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "constructor",
+      "selected_option": "A10",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns090": {
+      "after_states": [
+        "case nil\nq r : StarCounterState\nx : List (Option TextbookSymbol)\nhp : flawedStarCounterexample.IsPath q r x\nhq : q = StarCounterState.start\nhr : r = StarCounterState.accept\nhw : [] ∈ flawedStarCounterexample.accepts\nhx : x.reduceOption = []\n⊢ [].getLast? = some TextbookSymbol.a",
+        "case cons\nq r : StarCounterState\nx : List (Option TextbookSymbol)\nhp : flawedStarCounterexample.IsPath q r x\nhq : q = StarCounterState.start\nhr : r = StarCounterState.accept\nhead✝ : TextbookSymbol\ntail✝ : List TextbookSymbol\nhw : head✝ :: tail✝ ∈ flawedStarCounterexample.accepts\nhx : x.reduceOption = head✝ :: tail✝\n⊢ (head✝ :: tail✝).getLast? = some TextbookSymbol.a"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "cases w",
+      "selected_option": "A07",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns091": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "simp",
+      "selected_option": "A10"
+    },
+    "ns093": {
+      "after_states": [
+        "case nil\nh : [] ∈ languageG\n⊢ 2 ≤ [].length",
+        "case cons\nhead✝ : Bit\ntail✝ : List Bit\nh : head✝ :: tail✝ ∈ languageG\n⊢ 2 ≤ (head✝ :: tail✝).length"
+      ],
+      "classification": "valid_unverified_continuation",
+      "continuation_returncode": 1,
+      "isolated_returncode": 0,
+      "selected_action": "cases s",
+      "selected_option": "A01",
+      "verification": "Lean accepted the action, but the recorded suffix did not verify the theorem"
+    },
+    "ns099": {
+      "after_states": [],
+      "classification": "invalid",
+      "isolated_returncode": 1,
+      "selected_action": "cases w",
+      "selected_option": "A03"
+    }
+  },
+  "schema_version": 1,
+  "source_revision": "57ac584959f03a3e98c4decf04162cd3a1af6b59"
+}

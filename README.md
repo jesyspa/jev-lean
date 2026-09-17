@@ -1,10 +1,10 @@
 # jev-lean
 
-A reproducible Jev-first Lean experiment that ranks verified next steps toward a proof.
+Reproducible experiments on Jev-guided Lean proof actions.
 
-The current benchmark generates concrete actions from local hypotheses, local inductive variables, structural templates, and bounded retrieval over a frozen Mathlib declaration index. Lean checks immediate closure and bounded multi-step continuation. Held-out comparisons cover Jev, Aesop-first, deterministic, seeded-random, and candidate-oracle orderings. Useful-lemma selection and structural-helper routing are evaluated separately.
+The current real-transition study samples exactly 100 next tactics from pinned Sipser proof scripts, reconstructs every pre-state in Lean, asks Jev to choose among bounded shuffled candidates, and Lean-checks every miss under explicit continuation criteria. Jev exactly matched 57/100 recorded actions; one additional miss was a verified alternative.
 
-See [REPORT.md](REPORT.md) for results, cost, and limitations. [DESIGN.md](DESIGN.md) describes the controller boundary.
+See [NEXT_STEP_100_REPORT.md](NEXT_STEP_100_REPORT.md) for the real-transition study. [REPORT.md](REPORT.md) covers the earlier synthetic progress benchmark, and [DESIGN.md](DESIGN.md) describes the controller boundary.
 
 ## Reproduce the recorded experiment
 
@@ -17,6 +17,7 @@ lean-cache build --wait .
 python3 -m unittest discover -s tests -v
 python3 -m jevlean.progress check-lean
 python3 -m jevlean.progress metrics
+python3 -m jevlean.next_step metrics
 ```
 
 `check-lean` verifies the generated action matrix serially in one Lean process. `metrics` validates every frozen request and content-addressed response before reporting results.
@@ -25,6 +26,12 @@ The committed prompt freeze predates evaluation. Do not replace it for ordinary 
 
 ## Main files
 
+- `data/next-step-100.json`: 100 frozen real source transitions, states, and shuffled options.
+- `data/next-step-100-prompt-freeze.json`: final request hashes committed before evaluation.
+- `artifacts/next-step-100-jev-1.13.0-trace.jsonl`: safe final live trace.
+- `artifacts/next-step-100-lean-outcomes.json`: mechanical classification of every Jev miss.
+- `artifacts/next-step-100-metrics.json`: final metrics and per-case results.
+- `jevlean/next_step.py`: sampling, state reconstruction, prompts, Lean checks, and replay.
 - `data/progress-benchmark.json`: public cases, generation metadata, continuations, and budgets.
 - `data/library-index.json`: compact frozen declaration index used by bounded retrieval.
 - `data/progress-prompt-freeze.json`: pre-evaluation request hashes.
