@@ -4,7 +4,7 @@ Reproducible experiments on Jev-guided Lean proof actions.
 
 The current real-transition study samples exactly 100 next tactics from pinned Sipser proof scripts, reconstructs every pre-state in Lean, asks Jev to choose among bounded shuffled candidates, and Lean-checks every miss under explicit continuation criteria. Jev exactly matched 57/100 recorded actions; one additional miss was a verified alternative.
 
-See [NEXT_STEP_100_REPORT.md](NEXT_STEP_100_REPORT.md) for the real-transition study. [REPORT.md](REPORT.md) covers the earlier synthetic progress benchmark, and [DESIGN.md](DESIGN.md) describes the controller boundary.
+See [NEXT_STEP_100_REPORT.md](NEXT_STEP_100_REPORT.md) for the real-transition study. [REPORT.md](REPORT.md) covers the earlier synthetic progress benchmark, and [DESIGN.md](DESIGN.md) describes the controller boundary. [PANTOGRAPH_SPIKE.md](PANTOGRAPH_SPIKE.md) records the bounded backend feasibility verdict; the full search controller is not implemented.
 
 ## Reproduce the recorded experiment
 

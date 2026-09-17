@@ -1,0 +1,249 @@
+{
+  "auto_resume": true,
+  "gates": {
+    "clean_source_replay": {
+      "evidence": {
+        "accepted": true,
+        "fresh_process": true,
+        "output": ""
+      },
+      "status": "pass"
+    },
+    "fixed_goal_auto_resume": {
+      "evidence": {
+        "after": [
+          "p"
+        ],
+        "auto_resume": true,
+        "before": [
+          "p",
+          "q"
+        ],
+        "goal_id": 1
+      },
+      "status": "pass"
+    },
+    "frontier_recovery": {
+      "evidence": {
+        "goal_targets": [
+          [
+            "p \u2227 q"
+          ],
+          [
+            "p",
+            "q"
+          ],
+          [
+            "q"
+          ]
+        ],
+        "invalidated_runtime_ids": [
+          1,
+          4,
+          7
+        ],
+        "reconstructed": 3
+      },
+      "status": "pass"
+    },
+    "helper_namespace_instance_attribute": {
+      "evidence": {
+        "local_instance_compiled": true,
+        "namespace": "Generated.Scoped",
+        "remaining_goals": 0,
+        "simp_attribute_used": true
+      },
+      "status": "pass"
+    },
+    "immutable_branching": {
+      "evidence": {
+        "ancestor": 1,
+        "ancestor_goals": 1,
+        "children": [
+          2,
+          3
+        ]
+      },
+      "status": "pass"
+    },
+    "independent_suggestions": {
+      "evidence": {
+        "completed_families": {
+          "aesop?": {
+            "candidate": "simp_all only [true_or]",
+            "discovery_state_retained": false,
+            "result_goals": 0
+          },
+          "apply?": {
+            "candidate": "exact (h \u2218 fun a => hp) p",
+            "discovery_state_retained": false,
+            "result_goals": 0
+          },
+          "exact?": {
+            "candidate": "exact ((fun a => h) \u2218 fun a => p) p",
+            "discovery_state_retained": false,
+            "result_goals": 0
+          },
+          "grind? +suggestions": {
+            "candidate": "grind only",
+            "discovery_state_retained": false,
+            "result_goals": 0
+          },
+          "simp?": {
+            "candidate": "simp only [Nat.add_zero]",
+            "discovery_state_retained": false,
+            "result_goals": 0
+          }
+        },
+        "failures": [
+          "rw? with imports ('Init',): Pantograph response exceeded 180.0s"
+        ],
+        "message": "rw? with imports ('Init',): Pantograph response exceeded 180.0s",
+        "type": "MeasuredBlocker"
+      },
+      "status": "blocker"
+    },
+    "isolated_helper_lineages": {
+      "evidence": {
+        "alternated": true,
+        "base_prefix_depth": 1,
+        "cross_lineage_attempts_rejected": 2,
+        "lineages": 2
+      },
+      "status": "pass"
+    },
+    "latency_profile": {
+      "evidence": {
+        "clock": "time.monotonic",
+        "families": [
+          "broad_automation",
+          "helper_compilation",
+          "ordinary_tactic",
+          "recovery",
+          "replay",
+          "startup",
+          "suggestion"
+        ],
+        "unit": "milliseconds"
+      },
+      "status": "pass"
+    },
+    "root_unresolved_metavariable": {
+      "evidence": {
+        "experiment_auto_resume": true,
+        "fixture_auto_resume": false,
+        "root": "fun p q hp hq => \u27e8hp, ?m.17 p q hp hq\u27e9",
+        "rootHasMVar": true,
+        "visible_goals": 0
+      },
+      "status": "pass"
+    },
+    "safe_theorem_hole_extraction": {
+      "evidence": {
+        "boundary": [
+          65,
+          102
+        ],
+        "later_visible": false,
+        "prefix_sha256": "845f3327e277b4fbf4bc78e99294a614b8da0d49c3f3082bb5eb90bae04ef208",
+        "prior_visible": true,
+        "target_visible": false
+      },
+      "status": "pass"
+    }
+  },
+  "latency": {
+    "samples_ms": {
+      "broad_automation": [
+        623.466,
+        6013.851
+      ],
+      "helper_compilation": [
+        190.601
+      ],
+      "ordinary_tactic": [
+        5.824,
+        3.442,
+        4.868,
+        5.895,
+        13.571
+      ],
+      "recovery": [
+        18083.992
+      ],
+      "replay": [
+        39634.405
+      ],
+      "startup": [
+        16259.618,
+        15799.751,
+        12443.576,
+        14816.257,
+        44533.478,
+        15483.833,
+        15041.551,
+        15013.687,
+        13302.215
+      ],
+      "suggestion": [
+        3957.796,
+        44.65,
+        11.003,
+        183102.387
+      ]
+    },
+    "summary": {
+      "broad_automation": {
+        "max_ms": 6013.851,
+        "median_ms": 3318.659,
+        "min_ms": 623.466,
+        "n": 2
+      },
+      "helper_compilation": {
+        "max_ms": 190.601,
+        "median_ms": 190.601,
+        "min_ms": 190.601,
+        "n": 1
+      },
+      "ordinary_tactic": {
+        "max_ms": 13.571,
+        "median_ms": 5.824,
+        "min_ms": 3.442,
+        "n": 5
+      },
+      "recovery": {
+        "max_ms": 18083.992,
+        "median_ms": 18083.992,
+        "min_ms": 18083.992,
+        "n": 1
+      },
+      "replay": {
+        "max_ms": 39634.405,
+        "median_ms": 39634.405,
+        "min_ms": 39634.405,
+        "n": 1
+      },
+      "startup": {
+        "max_ms": 44533.478,
+        "median_ms": 15041.551,
+        "min_ms": 12443.576,
+        "n": 9
+      },
+      "suggestion": {
+        "max_ms": 183102.387,
+        "median_ms": 2001.223,
+        "min_ms": 11.003,
+        "n": 4
+      }
+    }
+  },
+  "lean_version": "4.30.0",
+  "pantograph_commit": "7076ab3632b5de67a4f83ab259b23b37acaea1d0",
+  "sandbox": "bubblewrap, network unshared, hidden home, read-only project/toolchain",
+  "schema": 1,
+  "summary": {
+    "blocker": 1,
+    "pass": 9,
+    "total": 10
+  }
+}
