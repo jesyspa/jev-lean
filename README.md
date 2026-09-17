@@ -1,43 +1,64 @@
 # jev-lean
 
-Reproducible experiments on Jev-guided Lean proof actions.
+Experiments on Jev-guided Lean proof search. Lean generates or executes concrete actions and remains the sole correctness oracle; Jev is evaluated as a ranker of promising proof steps.
 
-The current real-transition study samples exactly 100 next tactics from pinned Sipser proof scripts, reconstructs every pre-state in Lean, asks Jev to choose among bounded shuffled candidates, and Lean-checks every miss under explicit continuation criteria. Jev exactly matched 57/100 recorded actions; one additional miss was a verified alternative.
+No end-to-end prover exists yet.
 
-See [NEXT_STEP_100_REPORT.md](NEXT_STEP_100_REPORT.md) for the real-transition study. [REPORT.md](REPORT.md) covers the earlier synthetic progress benchmark, and [DESIGN.md](DESIGN.md) describes the controller boundary. [PANTOGRAPH_SPIKE.md](PANTOGRAPH_SPIKE.md) records the bounded backend feasibility verdict; the full search controller is not implemented.
+## Results so far
 
-## Reproduce the recorded experiment
+| Study | Result | What it establishes | Main limitation |
+|---|---:|---|---|
+| Initial synthetic catalogue | Jev selected a successful tactic on 11/12 goals; always-`aesop` solved 10/12 | A live Jev call can rank a small verified tactic catalogue | Small synthetic set with fixed actions |
+| Synthetic progress benchmark | Jev found a frozen useful action within three attempts on 14/15 goals; Aesop-first found 13/15 | Jev can rank some non-closing structural steps and compact retrieval candidates | The 15 goals and bounded continuations were author-written |
+| Sipser next-step study | 57/100 exact matches; 58/100 under a strict Lean-checked continuation criterion | Jev often recognizes an author-recorded next tactic among 8–10 options on real proof states | Family-balanced linear tactics from one project; not theorem solve rate |
+| Pantograph spike | 9/10 feasibility gates passed | Branching, multi-goal execution, isolated helper lineages, recovery, and replay are feasible | `rw?` ignored the intended timeout and exceeded a 180-second wall limit |
 
-Replay needs no API credential:
+The strongest current evidence is next-action ranking, not autonomous proof search. None of these studies measures end-to-end theorem solve rate, Mathlib-scale retrieval, or LLM-generated helper success.
+
+Detailed methods and caveats:
+
+- [NEXT_STEP_100_REPORT.md](NEXT_STEP_100_REPORT.md)
+- [REPORT.md](REPORT.md)
+- [PANTOGRAPH_SPIKE.md](PANTOGRAPH_SPIKE.md)
+
+## Design status
+
+The intended user interface is a Lean suggestion tactic:
+
+```lean
+theorem example ... := by
+  jev?
+```
+
+It should search, check the result in Lean, and offer ordinary Lean source through `Try this`. Users should commit the generated proof rather than leave network-dependent search in normal builds.
+
+Two implementation designs remain plausible:
+
+1. **Lean-native search:** run action generation, tactic-state branching, and search in `TacticM`; use an external broker only for credentials and model calls.
+2. **External search:** run the scheduler outside Lean and use Pantograph to execute actions in supervised Lean processes.
+
+A hybrid can expose `jev?` while searching in an isolated external Lean worker. [DESIGN.md](DESIGN.md) compares these designs and records the shared constraints.
+
+Independent of implementation language:
+
+- Lean and Mathlib supply tactic execution, suggestions, automation, and checking.
+- Jev ranks concrete verified alternatives; it does not invent Lean code.
+- Generative LLMs are fallback behavior for exhausted tactical search or complete helper patches.
+- Every accepted proof is replayed from source in a fresh Lean process.
+- Credentials remain outside generated-code workers and committed traces.
+- Evaluations freeze tasks and compare policies under explicit resource budgets.
+
+## Reproduce committed results
+
+Use the project cache wrapper for Lean builds:
 
 ```bash
 lean-cache use .
 lean-cache check-env
 lean-cache build --wait .
 python3 -m unittest discover -s tests -v
-python3 -m jevlean.progress check-lean
 python3 -m jevlean.progress metrics
 python3 -m jevlean.next_step metrics
 ```
 
-`check-lean` verifies the generated action matrix serially in one Lean process. `metrics` validates every frozen request and content-addressed response before reporting results.
-
-The committed prompt freeze predates evaluation. Do not replace it for ordinary replay. To define and run a new experiment, edit the public benchmark, run `python3 -m jevlean.progress freeze`, commit that freeze before making calls, and then run `python3 -m jevlean.progress live` with `TYPESAFE_API_KEY` in the environment. The client never records headers or credentials.
-
-## Main files
-
-- `data/next-step-100.json`: 100 frozen real source transitions, states, and shuffled options.
-- `data/next-step-100-prompt-freeze.json`: final request hashes committed before evaluation.
-- `artifacts/next-step-100-jev-1.13.0-trace.jsonl`: safe final live trace.
-- `artifacts/next-step-100-lean-outcomes.json`: mechanical classification of every Jev miss.
-- `artifacts/next-step-100-metrics.json`: final metrics and per-case results.
-- `jevlean/next_step.py`: sampling, state reconstruction, prompts, Lean checks, and replay.
-- `data/progress-benchmark.json`: public cases, generation metadata, continuations, and budgets.
-- `data/library-index.json`: compact frozen declaration index used by bounded retrieval.
-- `data/progress-prompt-freeze.json`: pre-evaluation request hashes.
-- `artifacts/progress-lean-outcomes.json`: Lean-verified immediate and bounded outcomes.
-- `artifacts/progress-jev-1.13.0-trace.jsonl`: safe content-addressed TypeSafe responses.
-- `artifacts/progress-metrics.json`: replayed headline and per-case metrics.
-- `jevlean/progress.py`: generation, retrieval, API, replay, Lean checking, and baselines.
-
-The earlier immediate-closure prototype remains reproducible through `jevlean.experiment` and its original artifacts.
+Replay uses committed, credential-free traces. Live commands require a TypeSafe API key and intentionally create a new experiment.
