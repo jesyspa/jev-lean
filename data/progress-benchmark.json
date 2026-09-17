@@ -1,0 +1,684 @@
+{
+  "schema_version": 2,
+  "frozen_policy": "Prompts, cases, generators, and retrieval index are frozen before held-out API calls.",
+  "progress_cases": [
+    {
+      "id": "p01_tally_append",
+      "split": "calibration",
+      "declaration": "example (xs ys : List Nat) : JevLean.tally (xs ++ ys) = JevLean.tally xs + JevLean.tally ys := by",
+      "state": "local context:\nxs ys : List Nat\n⊢ JevLean.tally (xs ++ ys) = JevLean.tally xs + JevLean.tally ys",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "xs"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.tally, Nat.add_assoc]"
+        },
+        {
+          "id": "c2",
+          "tactic": "omega"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p02_tally_map",
+      "split": "calibration",
+      "declaration": "example (f : Nat → Nat) (xs : List Nat) : JevLean.tally (xs.map f) = JevLean.tally xs := by",
+      "state": "local context:\nf : Nat → Nat\nxs : List Nat\n⊢ JevLean.tally (xs.map f) = JevLean.tally xs",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "xs"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.tally]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p03_sumSq_append",
+      "split": "calibration",
+      "declaration": "example (xs ys : List Nat) : JevLean.sumSq (xs ++ ys) = JevLean.sumSq xs + JevLean.sumSq ys := by",
+      "state": "local context:\nxs ys : List Nat\n⊢ JevLean.sumSq (xs ++ ys) = JevLean.sumSq xs + JevLean.sumSq ys",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "xs"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.sumSq, Nat.add_assoc]"
+        },
+        {
+          "id": "c2",
+          "tactic": "omega"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p04_sumSq_map",
+      "split": "heldout",
+      "declaration": "example (xs : List Nat) : JevLean.sumSq xs = (xs.map fun x => x * x).sum := by",
+      "state": "local context:\nxs : List Nat\n⊢ JevLean.sumSq xs = (xs.map fun x => x * x).sum",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "xs"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.sumSq]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p05_totalFrom",
+      "split": "heldout",
+      "declaration": "example (acc : Nat) (xs : List Nat) : JevLean.totalFrom acc xs = acc + xs.sum := by",
+      "state": "local context:\nacc : Nat\nxs : List Nat\n⊢ JevLean.totalFrom acc xs = acc + xs.sum",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "xs"
+      ],
+      "custom_actions": [
+        {
+          "id": "induction_xs_generalizing_acc",
+          "tactic": "induction xs generalizing acc",
+          "description": "Induct on xs while generalizing the accumulator acc."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.totalFrom] <;> omega"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p06_tree_leaves_mirror",
+      "split": "heldout",
+      "declaration": "example (t : JevLean.Tree Nat) : JevLean.Tree.leaves (JevLean.Tree.mirror t) = JevLean.Tree.leaves t := by",
+      "state": "local context:\nt : JevLean.Tree Nat\n⊢ JevLean.Tree.leaves (JevLean.Tree.mirror t) = JevLean.Tree.leaves t",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "t"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.Tree.mirror, JevLean.Tree.leaves, Nat.add_comm]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p07_tree_leaves_map",
+      "split": "heldout",
+      "declaration": "example (f : Nat → Nat) (t : JevLean.Tree Nat) : JevLean.Tree.leaves (JevLean.Tree.map f t) = JevLean.Tree.leaves t := by",
+      "state": "local context:\nf : Nat → Nat\nt : JevLean.Tree Nat\n⊢ JevLean.Tree.leaves (JevLean.Tree.map f t) = JevLean.Tree.leaves t",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "t"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.Tree.map, JevLean.Tree.leaves]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p08_tree_mirror_involutive",
+      "split": "heldout",
+      "declaration": "example (t : JevLean.Tree Nat) : JevLean.Tree.mirror (JevLean.Tree.mirror t) = t := by",
+      "state": "local context:\nt : JevLean.Tree Nat\n⊢ JevLean.Tree.mirror (JevLean.Tree.mirror t) = t",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "t"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.Tree.mirror]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p09_tree_map_mirror",
+      "split": "heldout",
+      "declaration": "example (f : Nat → Nat) (t : JevLean.Tree Nat) : JevLean.Tree.map f (JevLean.Tree.mirror t) = JevLean.Tree.mirror (JevLean.Tree.map f t) := by",
+      "state": "local context:\nf : Nat → Nat\nt : JevLean.Tree Nat\n⊢ JevLean.Tree.map f (JevLean.Tree.mirror t) = JevLean.Tree.mirror (JevLean.Tree.map f t)",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "t"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.Tree.map, JevLean.Tree.mirror]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p10_set_distrib",
+      "split": "heldout",
+      "declaration": "example (A B C : Set Nat) : A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by",
+      "state": "local context:\nA B C : Set Nat\n⊢ A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "ext_x",
+          "tactic": "ext x",
+          "description": "Apply set extensionality at a fresh element x."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "constructor <;> aesop"
+        },
+        {
+          "id": "c2",
+          "tactic": "simp_all only [Set.mem_inter_iff, Set.mem_union]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p11_function_ext_arith",
+      "split": "heldout",
+      "declaration": "example (f g : Nat → Nat) (h : ∀ x, f x + 2 = g x + 2) : f = g := by",
+      "state": "local context:\nf g : Nat → Nat\nh : ∀ x, f x + 2 = g x + 2\n⊢ f = g",
+      "local_hypotheses": [
+        "h"
+      ],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "funext_x",
+          "tactic": "funext x",
+          "description": "Reduce function equality to a pointwise equality at x."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "specialize h x <;> omega"
+        },
+        {
+          "id": "c2",
+          "tactic": "simp_all"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p12_exists_square",
+      "split": "heldout",
+      "declaration": "example (n : Nat) : ∃ m, m = n * n + 2 * n + 1 := by",
+      "state": "local context:\nn : Nat\n⊢ ∃ m, m = n * n + 2 * n + 1",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "witness_square",
+          "tactic": "refine ⟨(n + 1)^2, ?_⟩",
+          "description": "Use the concrete witness (n+1)^2 and leave its identity as a successor."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "ring"
+        },
+        {
+          "id": "c2",
+          "tactic": "omega"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p13_conjunction_arith",
+      "split": "heldout",
+      "declaration": "example (a b c : Nat) (h₁ : a ≤ b) (h₂ : b ≤ c) : a + 2 ≤ c + 2 ∧ a ≤ c := by",
+      "state": "local context:\na b c : Nat\nh₁ : a ≤ b\nh₂ : b ≤ c\n⊢ a + 2 ≤ c + 2 ∧ a ≤ c",
+      "local_hypotheses": [
+        "h₁",
+        "h₂"
+      ],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "constructor",
+          "tactic": "constructor",
+          "description": "Split the conjunction into two arithmetic successor goals."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "omega"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p14_nat_induction",
+      "split": "heldout",
+      "declaration": "example (P : Nat → Prop) (h0 : P 0) (hs : ∀ n, P n → P (n + 1)) : ∀ n, P n := by",
+      "state": "local context:\nP : Nat → Prop\nh0 : P 0\nhs : ∀ n, P n → P (n + 1)\n⊢ ∀ n, P n",
+      "local_hypotheses": [
+        "h0",
+        "hs"
+      ],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "intro_n",
+          "tactic": "intro n",
+          "description": "Introduce the quantified natural n, yielding a concrete induction goal."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "induction n <;> simp_all [Nat.succ_eq_add_one]"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p15_append_assoc",
+      "split": "heldout",
+      "declaration": "example {α : Type} (xs ys zs : List α) : (xs ++ ys) ++ zs = xs ++ (ys ++ zs) := by",
+      "state": "local context:\nα : Type\nxs ys zs : List α\n⊢ (xs ++ ys) ++ zs = xs ++ (ys ++ zs)",
+      "local_hypotheses": [],
+      "induction_variables": [
+        "xs"
+      ],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all"
+        }
+      ],
+      "retrieval_query": ""
+    },
+    {
+      "id": "p16_finset_card_union",
+      "split": "heldout",
+      "declaration": "example (s t : Finset Nat) (h : Disjoint s t) : (s ∪ t).card + 1 = s.card + t.card + 1 := by",
+      "state": "local context:\ns t : Finset Nat\nh : Disjoint s t\n⊢ (s ∪ t).card + 1 = s.card + t.card + 1",
+      "local_hypotheses": [
+        "h"
+      ],
+      "induction_variables": [],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all"
+        },
+        {
+          "id": "c2",
+          "tactic": "omega"
+        }
+      ],
+      "retrieval_query": "Finset card union disjoint"
+    },
+    {
+      "id": "p17_left_inverse",
+      "split": "heldout",
+      "declaration": "example {α β : Type} (f : α → β) (g : β → α) (h : Function.LeftInverse g f) (x y : α) (heq : f x = f y) : x = y := by",
+      "state": "local context:\nα β : Type\nf : α → β\ng : β → α\nh : Function.LeftInverse g f\nx y : α\nheq : f x = f y\n⊢ x = y",
+      "local_hypotheses": [
+        "h",
+        "heq"
+      ],
+      "induction_variables": [],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "assumption"
+        },
+        {
+          "id": "c2",
+          "tactic": "simp_all"
+        }
+      ],
+      "retrieval_query": "Function LeftInverse injective"
+    },
+    {
+      "id": "p18_rewrite_ring",
+      "split": "heldout",
+      "declaration": "example (x y : Int) (h : x = y + 3) : x^2 = y^2 + 6*y + 9 := by",
+      "state": "local context:\nx y : Int\nh : x = y + 3\n⊢ x^2 = y^2 + 6*y + 9",
+      "local_hypotheses": [
+        "h"
+      ],
+      "induction_variables": [],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "ring"
+        }
+      ],
+      "retrieval_query": "equality rewrite substitution"
+    }
+  ],
+  "lemma_cases": [
+    {
+      "id": "l01_card_union",
+      "split": "heldout",
+      "declaration": "example (s t : Finset Nat) (h : Disjoint s t) : (s ∪ t).card = s.card + t.card := by",
+      "state": "local context:\ns t : Finset Nat\nh : Disjoint s t\n⊢ (s ∪ t).card = s.card + t.card",
+      "retrieval_query": "Finset card union disjoint h",
+      "local_hypotheses": [
+        "h"
+      ],
+      "application_arguments": [
+        "h"
+      ]
+    },
+    {
+      "id": "l02_left_inverse",
+      "split": "heldout",
+      "declaration": "example {α β : Type} (f : α → β) (g : β → α) (h : Function.LeftInverse g f) : Function.Injective f := by",
+      "state": "local context:\nf : α → β\ng : β → α\nh : Function.LeftInverse g f\n⊢ Function.Injective f",
+      "retrieval_query": "Function LeftInverse injective",
+      "local_hypotheses": [
+        "h"
+      ],
+      "application_arguments": [
+        "h"
+      ]
+    },
+    {
+      "id": "l03_length_append",
+      "split": "heldout",
+      "declaration": "example {α : Type} (xs ys : List α) : (xs ++ ys).length = xs.length + ys.length := by",
+      "state": "local context:\nxs ys : List α\n⊢ (xs ++ ys).length = xs.length + ys.length",
+      "retrieval_query": "List length append",
+      "local_hypotheses": [],
+      "application_arguments": []
+    },
+    {
+      "id": "l04_reverse_injective",
+      "split": "heldout",
+      "declaration": "example {α : Type} (xs ys : List α) (h : xs.reverse = ys.reverse) : xs = ys := by",
+      "state": "local context:\nxs ys : List α\nh : xs.reverse = ys.reverse\n⊢ xs = ys",
+      "retrieval_query": "List reverse injective h",
+      "local_hypotheses": [
+        "h"
+      ],
+      "application_arguments": [
+        "h"
+      ]
+    },
+    {
+      "id": "l05_mod_lt",
+      "split": "heldout",
+      "declaration": "example (n m : Nat) (h : 0 < m) : n % m < m := by",
+      "state": "local context:\nn m : Nat\nh : 0 < m\n⊢ n % m < m",
+      "retrieval_query": "Nat mod less than positive",
+      "local_hypotheses": [
+        "h"
+      ],
+      "application_arguments": [
+        "n",
+        "h"
+      ]
+    },
+    {
+      "id": "l06_set_inter_comm",
+      "split": "heldout",
+      "declaration": "example {α : Type} (A B : Set α) : A ∩ B = B ∩ A := by",
+      "state": "local context:\nA B : Set α\n⊢ A ∩ B = B ∩ A",
+      "retrieval_query": "Set intersection commutative",
+      "local_hypotheses": [],
+      "application_arguments": [
+        "A",
+        "B"
+      ]
+    },
+    {
+      "id": "l07_map_append",
+      "split": "heldout",
+      "declaration": "example {α β : Type} (f : α → β) (xs ys : List α) : List.map f (xs ++ ys) = List.map f xs ++ List.map f ys := by",
+      "state": "local context:\nf : α → β\nxs ys : List α\n⊢ List.map f (xs ++ ys) = List.map f xs ++ List.map f ys",
+      "retrieval_query": "List map append",
+      "local_hypotheses": [],
+      "application_arguments": []
+    },
+    {
+      "id": "l08_sum_union",
+      "split": "heldout",
+      "declaration": "example (s t : Finset Nat) (f : Nat → Nat) (h : Disjoint s t) : (∑ x ∈ s ∪ t, f x) = (∑ x ∈ s, f x) + ∑ x ∈ t, f x := by",
+      "state": "local context:\ns t : Finset Nat\nf : Nat → Nat\nh : Disjoint s t\n⊢ (∑ x ∈ s ∪ t, f x) = (∑ x ∈ s, f x) + ∑ x ∈ t, f x",
+      "retrieval_query": "Finset sum union disjoint",
+      "local_hypotheses": [
+        "h"
+      ],
+      "application_arguments": [
+        "h"
+      ]
+    },
+    {
+      "id": "l09_subset_trans",
+      "split": "heldout",
+      "declaration": "example {α : Type} (A B C : Set α) (hAB : A ⊆ B) (hBC : B ⊆ C) : A ⊆ C := by",
+      "state": "local context:\nA B C : Set α\nhAB : A ⊆ B\nhBC : B ⊆ C\n⊢ A ⊆ C",
+      "retrieval_query": "Set subset transitive",
+      "local_hypotheses": [
+        "hAB",
+        "hBC"
+      ],
+      "application_arguments": [
+        "hAB",
+        "hBC"
+      ]
+    },
+    {
+      "id": "l10_add_le_add",
+      "split": "heldout",
+      "declaration": "example (a b c d : Nat) (h1 : a ≤ b) (h2 : c ≤ d) : a + c ≤ b + d := by",
+      "state": "local context:\na b c d : Nat\nh1 : a ≤ b\nh2 : c ≤ d\n⊢ a + c ≤ b + d",
+      "retrieval_query": "Nat add inequality monotone",
+      "local_hypotheses": [
+        "h1",
+        "h2"
+      ],
+      "application_arguments": [
+        "h1",
+        "h2"
+      ]
+    }
+  ],
+  "routing_cases": [
+    {
+      "id": "r01_accumulator",
+      "state": "Prove totalFrom acc xs = acc + xs.sum. The fixed direct catalog may use local hypotheses, simplification, arithmetic, and ordinary induction, but cannot generalize acc.",
+      "declaration": "example (acc : Nat) (xs : List Nat) : JevLean.totalFrom acc xs = acc + xs.sum := by",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.totalFrom]"
+        },
+        {
+          "id": "c2",
+          "tactic": "omega"
+        }
+      ],
+      "helper_patch": "private lemma route_totalFrom (acc : Nat) (xs : List Nat) : JevLean.totalFrom acc xs = acc + xs.sum := by\n  induction xs generalizing acc <;> simp_all [JevLean.totalFrom] <;> omega\nexample (acc : Nat) (xs : List Nat) : JevLean.totalFrom acc xs = acc + xs.sum := by exact route_totalFrom acc xs",
+      "split": "heldout"
+    },
+    {
+      "id": "r02_tree_involution",
+      "state": "Prove mirror (mirror t) = t. The direct catalog excludes structural induction; a reusable involution helper is offered as a separate patch.",
+      "declaration": "example (t : JevLean.Tree Nat) : JevLean.Tree.mirror (JevLean.Tree.mirror t) = t := by",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.Tree.mirror]"
+        }
+      ],
+      "helper_patch": "private lemma route_mirror (t : JevLean.Tree Nat) : JevLean.Tree.mirror (JevLean.Tree.mirror t) = t := by\n  induction t <;> simp_all [JevLean.Tree.mirror]\nexample (t : JevLean.Tree Nat) : JevLean.Tree.mirror (JevLean.Tree.mirror t) = t := by exact route_mirror t",
+      "split": "heldout"
+    },
+    {
+      "id": "r03_tally_append",
+      "state": "Prove tally distributes over append. The direct catalog excludes induction; an auxiliary structural theorem can be added.",
+      "declaration": "example (xs ys : List Nat) : JevLean.tally (xs ++ ys) = JevLean.tally xs + JevLean.tally ys := by",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "simp_all [JevLean.tally, Nat.add_assoc]"
+        }
+      ],
+      "helper_patch": "private lemma route_tally (xs ys : List Nat) : JevLean.tally (xs ++ ys) = JevLean.tally xs + JevLean.tally ys := by\n  induction xs <;> simp_all [JevLean.tally, Nat.add_assoc]\nexample (xs ys : List Nat) : JevLean.tally (xs ++ ys) = JevLean.tally xs + JevLean.tally ys := by exact route_tally xs ys",
+      "split": "heldout"
+    },
+    {
+      "id": "r04_direct_ext",
+      "state": "Set distributivity can progress by a generated extensionality action and bounded propositional continuation.",
+      "declaration": "example (A B C : Set Nat) : A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "ext_x",
+          "tactic": "ext x",
+          "description": "Apply set extensionality."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "constructor <;> aesop"
+        }
+      ],
+      "helper_patch": "example (A B C : Set Nat) : A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by ext x <;> aesop",
+      "split": "heldout"
+    },
+    {
+      "id": "r05_direct_witness",
+      "state": "An existential polynomial identity has a concrete generated witness action followed by ring normalization.",
+      "declaration": "example (n : Nat) : ∃ m, m = n * n + 2 * n + 1 := by",
+      "local_hypotheses": [],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "witness_square",
+          "tactic": "refine ⟨(n + 1)^2, ?_⟩",
+          "description": "Supply (n+1)^2."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "ring"
+        }
+      ],
+      "helper_patch": "example (n : Nat) : ∃ m, m = n * n + 2 * n + 1 := by refine ⟨(n+1)^2, by ring⟩",
+      "split": "heldout"
+    },
+    {
+      "id": "r06_direct_local",
+      "state": "A left inverse and an equality are local. Generated exact/apply actions plus simplification can finish without declarations.",
+      "declaration": "example {α β : Type} (f : α → β) (g : β → α) (h : Function.LeftInverse g f) (x y : α) (heq : f x = f y) : x = y := by",
+      "local_hypotheses": [
+        "h",
+        "heq"
+      ],
+      "induction_variables": [],
+      "custom_actions": [
+        {
+          "id": "apply_injective",
+          "tactic": "apply h.injective",
+          "description": "Apply injectivity derived from the local left inverse."
+        }
+      ],
+      "continuations": [
+        {
+          "id": "c1",
+          "tactic": "exact heq"
+        }
+      ],
+      "helper_patch": "example {α β : Type} (f : α → β) (g : β → α) (h : Function.LeftInverse g f) (x y : α) (heq : f x = f y) : x = y := by exact h.injective heq",
+      "split": "heldout"
+    }
+  ],
+  "generator": {
+    "standard_actions": [
+      {
+        "id": "aesop",
+        "tactic": "aesop",
+        "description": "Run one-shot Aesop."
+      },
+      {
+        "id": "simp",
+        "tactic": "simp",
+        "description": "Run the default simplifier once."
+      },
+      {
+        "id": "omega",
+        "tactic": "omega",
+        "description": "Run Presburger arithmetic once."
+      },
+      {
+        "id": "ring",
+        "tactic": "ring",
+        "description": "Run polynomial normalization once."
+      },
+      {
+        "id": "rfl",
+        "tactic": "rfl",
+        "description": "Try definitional reflexivity."
+      }
+    ],
+    "local_modes": [
+      "exact",
+      "apply"
+    ],
+    "retrieval_limit": 6
+  },
+  "budgets": {
+    "ordered_attempts": 3,
+    "continuations_per_action": 3,
+    "random_permutations": 2000
+  },
+  "seed": 20260917
+}

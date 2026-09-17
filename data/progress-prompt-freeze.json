@@ -1,0 +1,180 @@
+{
+  "data_sha256": "939802880238451e22fb6f95adb62b51ad73fc6813badf970f4e58f0af2a4301",
+  "frozen_at_utc": "2026-09-17T12:02:07Z",
+  "index_sha256": "4984b155f29c79d4e1d6351d8a7b5fb79d8eb7a57eca18fb6c23aa3372246635",
+  "model": "jev-1.13.0",
+  "policy": "Created and committed before the first held-out TypeSafe call; changing any prompt, case, generated candidate, continuation, or retrieval result invalidates replay.",
+  "requests": [
+    {
+      "case_id": "p01_tally_append",
+      "experiment": "progress",
+      "request_sha256": "86527d7cea36b9557b0e2f77ef93acbf601c56465121c31fe49c7ed4ec03f7f8"
+    },
+    {
+      "case_id": "p02_tally_map",
+      "experiment": "progress",
+      "request_sha256": "0de04bcc6ffb684c9b01c2ad7549208b1fbe558c4934af9ed69b77ac7b71cb08"
+    },
+    {
+      "case_id": "p03_sumSq_append",
+      "experiment": "progress",
+      "request_sha256": "c8b849a9e180f88ed78d4399b59659289842144fb7df819a598b4ce946b179fa"
+    },
+    {
+      "case_id": "p04_sumSq_map",
+      "experiment": "progress",
+      "request_sha256": "129bd3535f4663cfca79e0895209531c4a21a424a06b179e78ad7e493ac102e0"
+    },
+    {
+      "case_id": "p05_totalFrom",
+      "experiment": "progress",
+      "request_sha256": "fe3d54def1f9c1bc5437b48009771fea6bb326e00be132d7ea4f53ac2dc1cae8"
+    },
+    {
+      "case_id": "p06_tree_leaves_mirror",
+      "experiment": "progress",
+      "request_sha256": "81e05b059c96eb74b5f8a050d7bab73204ccaebe7c6d9df6b3074a52e2325250"
+    },
+    {
+      "case_id": "p07_tree_leaves_map",
+      "experiment": "progress",
+      "request_sha256": "09f7422b6f037ea307b332170cbe19ec42fe86574fd2d5f3a9b6256e5fe7d640"
+    },
+    {
+      "case_id": "p08_tree_mirror_involutive",
+      "experiment": "progress",
+      "request_sha256": "f0c72139602ff6dab0c758c7589ea7df28471c9da65609ef120033d918ee5ef6"
+    },
+    {
+      "case_id": "p09_tree_map_mirror",
+      "experiment": "progress",
+      "request_sha256": "32235674885a188522e88c29989b2cd70d4993cc95c12a5c3915894f6a79b766"
+    },
+    {
+      "case_id": "p10_set_distrib",
+      "experiment": "progress",
+      "request_sha256": "0c33d70ecec1847898e675dab4884f94f2d16c448350dfdfcd7359509a9744dd"
+    },
+    {
+      "case_id": "p11_function_ext_arith",
+      "experiment": "progress",
+      "request_sha256": "010c22895de552463c50a0f4e054163be7c876f1f45c7423d58b148580717d90"
+    },
+    {
+      "case_id": "p12_exists_square",
+      "experiment": "progress",
+      "request_sha256": "0afa013e0fd7aa1ae68d82fa2f31724744011a0359fa7371fe94ff2f8d1a57d4"
+    },
+    {
+      "case_id": "p13_conjunction_arith",
+      "experiment": "progress",
+      "request_sha256": "3b18f893a3bfcd2e74e89c4d438a4841ee83dc2d60d920c574cabc3eecb49e54"
+    },
+    {
+      "case_id": "p14_nat_induction",
+      "experiment": "progress",
+      "request_sha256": "ddcbba556e7519499d8abd7a1e7712052c74444fbfab785726e855ce1c76e587"
+    },
+    {
+      "case_id": "p15_append_assoc",
+      "experiment": "progress",
+      "request_sha256": "48b361832b51a7c1c022ee5c053aac6bea26ff87c5b3db8274ae8914d0265f46"
+    },
+    {
+      "case_id": "p16_finset_card_union",
+      "experiment": "progress",
+      "request_sha256": "03e0b1aec4613f494ff9d5c3f96a601352146874f942f4d39de515e309b5a791"
+    },
+    {
+      "case_id": "p17_left_inverse",
+      "experiment": "progress",
+      "request_sha256": "e513ae5cb2e3f532d1dad13d1510ef8af216133d4bdd053b614f6c2c60dc09ed"
+    },
+    {
+      "case_id": "p18_rewrite_ring",
+      "experiment": "progress",
+      "request_sha256": "d273f76e4f2bdd4833ad9fe2b9a981dbf67b97e46b932f536b1dc4133f85ef4d"
+    },
+    {
+      "case_id": "l01_card_union",
+      "experiment": "lemma",
+      "request_sha256": "96bc683e5cfed342463977f6ffa687f0ecafb3f88b201e96a9d778fc208c9782"
+    },
+    {
+      "case_id": "l02_left_inverse",
+      "experiment": "lemma",
+      "request_sha256": "90fc0c97c97976079b55a682a508316465139848429ecf9596833579bd06ed72"
+    },
+    {
+      "case_id": "l03_length_append",
+      "experiment": "lemma",
+      "request_sha256": "82554c53b0b9c3ec0ebe10b26863674d829f69f951a691ac64627725b55e1c4d"
+    },
+    {
+      "case_id": "l04_reverse_injective",
+      "experiment": "lemma",
+      "request_sha256": "65a475219e5f56314c3d26fe12bf6333fdfe0f9ddeee4d2e2c2c90737f1cdbe1"
+    },
+    {
+      "case_id": "l05_mod_lt",
+      "experiment": "lemma",
+      "request_sha256": "0d98740f772491cabcf75bdbf4baf637dcf758c5069b7726d057e12738f95948"
+    },
+    {
+      "case_id": "l06_set_inter_comm",
+      "experiment": "lemma",
+      "request_sha256": "e7ad19c0809b562682b84f41c254b453ea635cd5f72bc4c5848ecc63c83e2676"
+    },
+    {
+      "case_id": "l07_map_append",
+      "experiment": "lemma",
+      "request_sha256": "62bbaefbf371776bc315a0d87241553093d7789548407435193f8d9160c88e78"
+    },
+    {
+      "case_id": "l08_sum_union",
+      "experiment": "lemma",
+      "request_sha256": "e0c58b46795dea850d9a26e0a60e7042d9ddf0c7609aad68294708cab673c4e1"
+    },
+    {
+      "case_id": "l09_subset_trans",
+      "experiment": "lemma",
+      "request_sha256": "ef8b9aa1de0b4e02750556ec56a19a26eaf01c85384ddd0d03002ae41b9ca55b"
+    },
+    {
+      "case_id": "l10_add_le_add",
+      "experiment": "lemma",
+      "request_sha256": "8b1e3efc1974480ff7475a39aa2872e07c0568a7dae9283c8261dcce1708116c"
+    },
+    {
+      "case_id": "r01_accumulator",
+      "experiment": "routing",
+      "request_sha256": "728f4f1cbd7cfc937d58c788830728888252f1f3a3f73f977f0f0709c5d27d7e"
+    },
+    {
+      "case_id": "r02_tree_involution",
+      "experiment": "routing",
+      "request_sha256": "431055fec265a4f58f904973a989ea60841074bee031d37d69e5e3d60395e914"
+    },
+    {
+      "case_id": "r03_tally_append",
+      "experiment": "routing",
+      "request_sha256": "411d19e88195fd88424c228aa7f8950bdb1ce08157187112274afd0897171fd8"
+    },
+    {
+      "case_id": "r04_direct_ext",
+      "experiment": "routing",
+      "request_sha256": "5211e50bdba60aaaf9fd33e032814379541bdbdbef3d60626c3759b41012d915"
+    },
+    {
+      "case_id": "r05_direct_witness",
+      "experiment": "routing",
+      "request_sha256": "4aaee7a27fbbc13b89bacf895c1d01597318c229762969dd3657b58609d5f113"
+    },
+    {
+      "case_id": "r06_direct_local",
+      "experiment": "routing",
+      "request_sha256": "b4ab815ec254dc09f8a9dcfeb445b7f6ab998b4ddda25daaa4464ee78c9d7f24"
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,784 @@
+{
+  "helper_patches_verified": {
+    "r01_accumulator": true,
+    "r02_tree_involution": true,
+    "r03_tally_append": true,
+    "r04_direct_ext": true,
+    "r05_direct_witness": true,
+    "r06_direct_local": true
+  },
+  "lean_toolchain": "leanprover/lean4:v4.30.0",
+  "lemma": {
+    "l01_card_union": {
+      "Finset.card_inter_le_left": false,
+      "Finset.card_union": false,
+      "Finset.card_union_of_disjoint": true,
+      "Finset.sum_inter_add_sum_diff": false,
+      "Finset.sum_union": false,
+      "Function.LeftInverse.injective": false
+    },
+    "l02_left_inverse": {
+      "Finset.card_union_of_disjoint": false,
+      "Function.Injective.comp": false,
+      "Function.LeftInverse.injective": true,
+      "Function.RightInverse.surjective": false,
+      "Function.Surjective.comp": false,
+      "List.reverse_injective": false
+    },
+    "l03_length_append": {
+      "List.length_append": true,
+      "List.length_map": false,
+      "List.length_reverse": false,
+      "List.map_append": false,
+      "List.reverse_append": false,
+      "List.reverse_injective": false
+    },
+    "l04_reverse_injective": {
+      "Function.LeftInverse.injective": false,
+      "List.length_reverse": false,
+      "List.reverse_append": false,
+      "List.reverse_inj": false,
+      "List.reverse_injective": true,
+      "List.reverse_reverse": false
+    },
+    "l05_mod_lt": {
+      "Nat.add_assoc": false,
+      "Nat.add_comm": false,
+      "Nat.add_le_add": false,
+      "Nat.add_le_add_right": false,
+      "Nat.mod_le": false,
+      "Nat.mod_lt": true
+    },
+    "l06_set_inter_comm": {
+      "Set.Subset.trans": false,
+      "Set.inter_assoc": false,
+      "Set.inter_comm": true,
+      "Set.inter_subset_left": false,
+      "Set.inter_subset_right": false,
+      "Set.union_comm": false
+    },
+    "l07_map_append": {
+      "List.length_append": false,
+      "List.length_map": false,
+      "List.length_reverse": false,
+      "List.map_append": true,
+      "List.reverse_append": false,
+      "List.reverse_injective": false
+    },
+    "l08_sum_union": {
+      "Finset.card_inter_le_left": false,
+      "Finset.card_union": false,
+      "Finset.card_union_of_disjoint": false,
+      "Finset.sum_inter_add_sum_diff": false,
+      "Finset.sum_union": true,
+      "Function.LeftInverse.injective": false
+    },
+    "l09_subset_trans": {
+      "Set.Subset.trans": true,
+      "Set.inter_assoc": false,
+      "Set.inter_comm": false,
+      "Set.inter_subset_left": false,
+      "Set.inter_subset_right": false,
+      "Set.union_comm": false
+    },
+    "l10_add_le_add": {
+      "Nat.add_assoc": false,
+      "Nat.add_comm": false,
+      "Nat.add_le_add": true,
+      "Nat.add_le_add_right": false,
+      "Nat.mod_le": false,
+      "Nat.mod_lt": false
+    }
+  },
+  "operational_rule": "useful iff the action closes immediately or action plus one of the frozen bounded continuations closes all successor goals",
+  "progress": {
+    "p01_tally_append": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_xs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_xs": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p02_tally_map": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_xs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_xs": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p03_sumSq_append": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_xs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_xs": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p04_sumSq_map": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_xs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_xs": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p05_totalFrom": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_xs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_xs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_xs_generalizing_acc": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p06_tree_leaves_mirror": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_t": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_t": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p07_tree_leaves_map": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_t": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_t": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p08_tree_mirror_involutive": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_t": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_t": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p09_tree_map_mirror": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "cases_t": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "induction_t": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p10_set_distrib": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "ext_x": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p11_function_ext_arith": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "apply_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "funext_x": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p12_exists_square": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "witness_square": {
+        "bounded_close": true,
+        "immediate_close": false
+      }
+    },
+    "p13_conjunction_arith": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "apply_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "constructor": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "exact_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": true,
+        "immediate_close": false
+      }
+    },
+    "p14_nat_induction": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "apply_h0": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_hs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_h0": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_hs": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "intro_n": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p15_append_assoc": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "cases_xs": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "induction_xs": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": true,
+        "immediate_close": true
+      }
+    },
+    "p16_finset_card_union": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": true
+      },
+      "apply_finset_card_inter_le_left": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_card_union": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_card_union_of_disjoint": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_sum_inter_add_sum_diff": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_sum_union": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_function_leftinverse_injective": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": true,
+        "immediate_close": false
+      }
+    },
+    "p17_left_inverse": {
+      "aesop": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_card_union_of_disjoint": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_function_injective_comp": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_function_leftinverse_injective": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "apply_function_rightinverse_surjective": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_function_surjective_comp": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_heq": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_list_reverse_injective": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_heq": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    },
+    "p18_rewrite_ring": {
+      "aesop": {
+        "bounded_close": true,
+        "immediate_close": false
+      },
+      "apply_finset_card_inter_le_left": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_card_union": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_card_union_of_disjoint": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_sum_inter_add_sum_diff": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_finset_sum_union": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_function_leftinverse_injective": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "apply_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "exact_h": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "omega": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "rfl": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "ring": {
+        "bounded_close": false,
+        "immediate_close": false
+      },
+      "simp": {
+        "bounded_close": false,
+        "immediate_close": false
+      }
+    }
+  },
+  "routing": {
+    "r01_accumulator": {
+      "aesop": false,
+      "omega": false,
+      "rfl": false,
+      "ring": false,
+      "simp": false
+    },
+    "r02_tree_involution": {
+      "aesop": false,
+      "omega": false,
+      "rfl": false,
+      "ring": false,
+      "simp": false
+    },
+    "r03_tally_append": {
+      "aesop": false,
+      "omega": false,
+      "rfl": false,
+      "ring": false,
+      "simp": false
+    },
+    "r04_direct_ext": {
+      "aesop": true,
+      "ext_x": true,
+      "omega": false,
+      "rfl": false,
+      "ring": false,
+      "simp": false
+    },
+    "r05_direct_witness": {
+      "aesop": true,
+      "omega": false,
+      "rfl": false,
+      "ring": false,
+      "simp": true,
+      "witness_square": true
+    },
+    "r06_direct_local": {
+      "aesop": false,
+      "apply_h": false,
+      "apply_heq": false,
+      "apply_injective": true,
+      "exact_h": false,
+      "exact_heq": false,
+      "omega": false,
+      "rfl": false,
+      "ring": false,
+      "simp": false
+    }
+  },
+  "schema_version": 2
+}
