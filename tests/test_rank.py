@@ -27,7 +27,16 @@ class RankTests(unittest.TestCase):
     def test_complete_remote_ranking_is_returned(self, client: object) -> None:
         client.return_value.evaluate.return_value = (
             "{}",
-            {"model": MODEL, "answers": {"ranking": ["A02", "A01"]}},
+            {
+                "model": MODEL,
+                "answers": {
+                    "ranking": {
+                        "type": "choice",
+                        "choice": "A02",
+                        "probabilities": {"A01": 0.1, "A02": 0.9},
+                    }
+                },
+            },
             0.1,
         )
         self.assertEqual(rank(REQUEST, api_key="key"), (["A02", "A01"], "jev"))
@@ -36,7 +45,16 @@ class RankTests(unittest.TestCase):
     def test_incomplete_remote_ranking_uses_fallback(self, client: object) -> None:
         client.return_value.evaluate.return_value = (
             "{}",
-            {"model": MODEL, "answers": {"ranking": ["A01"]}},
+            {
+                "model": MODEL,
+                "answers": {
+                    "ranking": {
+                        "type": "choice",
+                        "choice": "A01",
+                        "probabilities": {"A01": 1.0},
+                    }
+                },
+            },
             0.1,
         )
         self.assertEqual(rank(REQUEST, api_key="key"), (["A01", "A02"], "fallback"))

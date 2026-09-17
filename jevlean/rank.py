@@ -42,13 +42,10 @@ def payload(state: str, actions: list[dict[str, Any]]) -> dict[str, Any]:
         "state": {"language": "Lean 4 with Mathlib", "proof_state": state},
         "questions": {
             "ranking": {
-                "type": "ranking",
+                "type": "choice",
                 "instructions": {
-                    "question": "Rank these concrete Lean actions by likelihood of closing every current goal.",
-                    "constraints": [
-                        "Return every listed identifier exactly once.",
-                        "Do not propose Lean syntax or actions outside this catalogue.",
-                    ],
+                    "question": "Which concrete Lean action is most likely to close every current goal?",
+                    "constraints": ["Do not propose Lean syntax or actions outside this catalogue."],
                 },
                 "criteria": {action["id"]: {"lean_action": action["tactic"]} for action in actions},
             }
@@ -57,12 +54,23 @@ def payload(state: str, actions: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def ranking_from_response(response: Any, ids: list[str]) -> list[str]:
-    if not isinstance(response, dict) or response.get("model") != MODEL:
+    if not isinstance(response, dict) or not isinstance(response.get("model"), str):
         raise ValueError("unexpected model response")
-    ranking = response.get("answers", {}).get("ranking")
-    if not isinstance(ranking, list) or set(ranking) != set(ids) or len(ranking) != len(ids):
-        raise ValueError("response does not rank every action exactly once")
-    return ranking
+    answer = response.get("answers", {}).get("ranking")
+    if not isinstance(answer, dict) or answer.get("type") != "choice":
+        raise ValueError("response does not contain a choice answer")
+    probabilities = answer.get("probabilities")
+    if not isinstance(probabilities, dict) or set(probabilities) != set(ids):
+        raise ValueError("response probabilities do not match the actions")
+    try:
+        weights = {identifier: float(probabilities[identifier]) for identifier in ids}
+    except (TypeError, ValueError) as error:
+        raise ValueError("response probabilities are not numeric") from error
+    if any(weight < 0.0 for weight in weights.values()) or abs(sum(weights.values()) - 1.0) > 0.01:
+        raise ValueError("response probabilities are invalid")
+    if answer.get("choice") not in ids:
+        raise ValueError("response choice does not match the actions")
+    return sorted(ids, key=lambda identifier: weights[identifier], reverse=True)
 
 
 def rank(request: dict[str, Any], api_key: str | None = None) -> tuple[list[str], str]:
