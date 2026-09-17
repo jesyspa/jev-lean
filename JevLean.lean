@@ -101,7 +101,7 @@ elab "jev?" : tactic => withMainContext do
   | some successor =>
     evalTactic successor.action.tacticSyntax
     Lean.Meta.Tactic.TryThis.addSuggestion (← getRef)
-      { suggestion := .tsyntax successor.action.tacticSyntax }
+      { suggestion := .string successor.action.text }
 
 end Search
 

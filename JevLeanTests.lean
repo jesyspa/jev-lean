@@ -20,3 +20,7 @@ example (P Q : Prop) (hP : P) (hQ : Q) : P ∧ Q := by
 example (P Q : Prop) (hP : P) (hQ : Q) : P ∧ Q := by
   constructor
   all_goals assumption
+
+/-- Suggestions with tactic configuration fields replay without inaccessible-name markers. -/
+example (P Q : Prop) : P ∧ Q → Q ∧ P := by
+  all_goals aesop (config := { terminal := true, maxRuleApplications := 32 })
