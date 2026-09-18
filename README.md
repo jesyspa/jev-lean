@@ -32,6 +32,7 @@ The default practical ledger is depth 6, path cost 6, 64 visited frontier nodes,
 | Synthetic progress benchmark | Jev found a frozen useful action within three attempts on 14/15 goals; Aesop-first found 13/15 | Jev can rank some non-closing structural steps and compact retrieval candidates | The 15 goals and bounded continuations were author-written |
 | Sipser next-step study | 57/100 exact matches; 58/100 under a strict Lean-checked continuation criterion | Jev often recognizes an author-recorded next tactic among 8–10 options on real proof states | Family-balanced linear tactics from one project; not theorem solve rate |
 | Pantograph spike | 9/10 feasibility gates passed | Branching, multi-goal execution, isolated helper lineages, recovery, and replay are feasible | `rw?` ignored the intended timeout and exceeded a 180-second wall limit |
+| Bounded search calibration | Accumulated defaults solved and replayed 6/6 frozen goals; the feature-disabled comparator solved 4/6 | Generated rewrite and structural paths add verified closes under the current ledger | Six representative states with a deterministic ranker are not a Mathlib-scale solve-rate estimate |
 
 The strongest current evidence is next-action ranking, not autonomous proof search. None of these studies measures end-to-end theorem solve rate, Mathlib-scale retrieval, or LLM-generated helper success.
 
@@ -40,6 +41,7 @@ Detailed methods and caveats:
 - [NEXT_STEP_100_REPORT.md](NEXT_STEP_100_REPORT.md)
 - [REPORT.md](REPORT.md)
 - [PANTOGRAPH_SPIKE.md](PANTOGRAPH_SPIKE.md)
+- [CALIBRATION_REPORT.md](CALIBRATION_REPORT.md)
 
 ## Design status
 
@@ -81,6 +83,7 @@ python3 -m jevlean.progress metrics
 python3 -m jevlean.rank < rank-request.json
 TYPESAFE_API_KEY=... python3 -m jevlean.rank_broker
 python3 -m jevlean.next_step metrics
+python3 -m jevlean.calibration --check
 ```
 
 Replay uses committed, credential-free traces. Live commands require a TypeSafe API key and intentionally create a new experiment.

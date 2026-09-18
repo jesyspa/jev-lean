@@ -18,3 +18,4 @@ python3 -m jevlean.experiment check-lean
 python3 -m jevlean.experiment metrics >/dev/null
 python3 -m jevlean.progress check-lean
 python3 -m jevlean.progress metrics >/dev/null
+python3 -m jevlean.calibration --check

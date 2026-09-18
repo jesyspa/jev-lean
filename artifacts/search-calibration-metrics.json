@@ -1,0 +1,191 @@
+{
+  "fixture": "Calibration.lean",
+  "limits": {
+    "accumulated": "Config defaults",
+    "pre_work": "new feature bounds disabled"
+  },
+  "modes": {
+    "accumulated": {
+      "admitted_successors": 22,
+      "attempted_transitions": 100,
+      "duplicate_successors": 12,
+      "expanded_nodes": 8,
+      "fixtures": 6,
+      "jev_calls": 8,
+      "replay_success": 6,
+      "solved": 6,
+      "wall_ms": 2871
+    },
+    "pre_work": {
+      "admitted_successors": 9,
+      "attempted_transitions": 66,
+      "duplicate_successors": 0,
+      "expanded_nodes": 7,
+      "fixtures": 6,
+      "jev_calls": 7,
+      "replay_success": 4,
+      "solved": 4,
+      "wall_ms": 132
+    }
+  },
+  "ranker": "deterministic identity seam; no network calls",
+  "rows": [
+    {
+      "admitted_successors": 3,
+      "attempted_transitions": 10,
+      "duplicate_successors": 0,
+      "expanded_nodes": 1,
+      "fixture": "local_baseline",
+      "jev_calls": 1,
+      "mode": "pre_work",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 0,
+      "wall_ms": 25
+    },
+    {
+      "admitted_successors": 1,
+      "attempted_transitions": 10,
+      "duplicate_successors": 2,
+      "expanded_nodes": 1,
+      "fixture": "local_baseline",
+      "jev_calls": 1,
+      "mode": "accumulated",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 2,
+      "wall_ms": 264
+    },
+    {
+      "admitted_successors": 2,
+      "attempted_transitions": 6,
+      "duplicate_successors": 0,
+      "expanded_nodes": 1,
+      "fixture": "retrieval",
+      "jev_calls": 1,
+      "mode": "pre_work",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 0,
+      "wall_ms": 13
+    },
+    {
+      "admitted_successors": 2,
+      "attempted_transitions": 10,
+      "duplicate_successors": 4,
+      "expanded_nodes": 1,
+      "fixture": "retrieval",
+      "jev_calls": 1,
+      "mode": "accumulated",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 3,
+      "wall_ms": 284
+    },
+    {
+      "admitted_successors": 0,
+      "attempted_transitions": 10,
+      "duplicate_successors": 0,
+      "expanded_nodes": 1,
+      "fixture": "rewrite",
+      "jev_calls": 1,
+      "mode": "pre_work",
+      "replay_success": false,
+      "solved": false,
+      "transposition_entries": 0,
+      "wall_ms": 22
+    },
+    {
+      "admitted_successors": 4,
+      "attempted_transitions": 15,
+      "duplicate_successors": 1,
+      "expanded_nodes": 1,
+      "fixture": "rewrite",
+      "jev_calls": 1,
+      "mode": "accumulated",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 5,
+      "wall_ms": 391
+    },
+    {
+      "admitted_successors": 3,
+      "attempted_transitions": 16,
+      "duplicate_successors": 0,
+      "expanded_nodes": 2,
+      "fixture": "unfolding",
+      "jev_calls": 2,
+      "mode": "pre_work",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 0,
+      "wall_ms": 37
+    },
+    {
+      "admitted_successors": 8,
+      "attempted_transitions": 24,
+      "duplicate_successors": 3,
+      "expanded_nodes": 2,
+      "fixture": "unfolding",
+      "jev_calls": 2,
+      "mode": "accumulated",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 9,
+      "wall_ms": 702
+    },
+    {
+      "admitted_successors": 1,
+      "attempted_transitions": 12,
+      "duplicate_successors": 0,
+      "expanded_nodes": 1,
+      "fixture": "local_application",
+      "jev_calls": 1,
+      "mode": "pre_work",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 0,
+      "wall_ms": 20
+    },
+    {
+      "admitted_successors": 4,
+      "attempted_transitions": 17,
+      "duplicate_successors": 2,
+      "expanded_nodes": 1,
+      "fixture": "local_application",
+      "jev_calls": 1,
+      "mode": "accumulated",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 5,
+      "wall_ms": 700
+    },
+    {
+      "admitted_successors": 0,
+      "attempted_transitions": 12,
+      "duplicate_successors": 0,
+      "expanded_nodes": 1,
+      "fixture": "structural",
+      "jev_calls": 1,
+      "mode": "pre_work",
+      "replay_success": false,
+      "solved": false,
+      "transposition_entries": 0,
+      "wall_ms": 15
+    },
+    {
+      "admitted_successors": 3,
+      "attempted_transitions": 24,
+      "duplicate_successors": 0,
+      "expanded_nodes": 2,
+      "fixture": "structural",
+      "jev_calls": 2,
+      "mode": "accumulated",
+      "replay_success": true,
+      "solved": true,
+      "transposition_entries": 4,
+      "wall_ms": 530
+    }
+  ],
+  "schema_version": 1
+}

@@ -678,6 +678,8 @@ def withoutRepeatedUnfolds (path actions : List Action) : List Action :=
 /-- Search accounting, including duplicate outcomes suppressed after tactic execution. -/
 structure SearchMetrics where
   expandedNodes : Nat := 0
+  /-- Number of ranker invocations, including deterministic benchmark rankers. -/
+  jevCalls : Nat := 0
   attemptedTransitions : Nat := 0
   admittedSuccessors : Nat := 0
   duplicateSuccessors : Nat := 0
@@ -756,6 +758,7 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
           let now ← IO.monoMsNow
           let metrics := { metrics with
             expandedNodes := metrics.expandedNodes + 1
+            jevCalls := calls
             attemptedTransitions := metrics.attemptedTransitions + usedAttempts
             admittedSuccessors := metrics.admittedSuccessors + admitted.length
             duplicateSuccessors := metrics.duplicateSuccessors + duplicates
