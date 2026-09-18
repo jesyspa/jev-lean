@@ -45,18 +45,18 @@ elab "jev_calibration" name:ident : tactic => withMainContext do
     let (result, metrics) ← searchWithMetrics config calibrationActions identityRanker
     logInfo ("JEV_CALIBRATION::" ++ (← resultJson name.getId.toString mode result metrics))
 
-def SipserAcceptance (n : Nat) : Prop := n = n
-lemma sipserAcceptance_zero : SipserAcceptance 0 := rfl
+def RetrievalTarget (n : Nat) : Prop := n = n
+lemma retrievalTarget_zero : RetrievalTarget 0 := rfl
 
-def SipserAccepted (n : Nat) : Prop := n = 0
+def EqualityTarget (n : Nat) : Prop := n = 0
 
-def SipserWitness (xs : List Nat) : Prop := ∃ ys : List Nat, ys = xs
+def WitnessTarget (xs : List Nat) : Prop := ∃ ys : List Nat, ys = xs
 
-inductive SipserTree where
+inductive FixtureTree where
   | leaf
-  | branch : SipserTree → SipserTree → SipserTree
+  | branch : FixtureTree → FixtureTree → FixtureTree
 
-def SipserTree.leaves : SipserTree → Nat
+def FixtureTree.leaves : FixtureTree → Nat
   | .leaf => 1
   | .branch left right => left.leaves + right.leaves
 
@@ -65,19 +65,19 @@ example (P : Prop) (h : P) : P := by
   jev_calibration local_baseline
   exact h
 
-/-- Frozen Sipser-shaped goal requiring bounded global retrieval. -/
-example : SipserAcceptance 0 := by
+/-- Frozen goal requiring bounded global retrieval. -/
+example : RetrievalTarget 0 := by
   jev_calibration retrieval
-  exact sipserAcceptance_zero
+  exact retrievalTarget_zero
 
 /-- Frozen equality-normalization goal requiring a generated rewrite. -/
-example (n : Nat) (h : n = 0) : SipserAccepted n = SipserAccepted 0 := by
+example (n : Nat) (h : n = 0) : EqualityTarget n = EqualityTarget 0 := by
   jev_calibration rewrite
   subst n
   rfl
 
 /-- Frozen existential goal requiring head unfolding followed by a witness. -/
-example (xs : List Nat) : SipserWitness xs := by
+example (xs : List Nat) : WitnessTarget xs := by
   jev_calibration unfolding
   exact ⟨xs, rfl⟩
 
@@ -86,7 +86,7 @@ example (P : Nat → Prop) (h : ∀ n, P n) (n : Nat) : P n := by
   jev_calibration local_application
   exact h n
 
-/-- Frozen structural-destructuring goal over a Sipser-shaped tree fact. -/
+/-- Frozen structural-destructuring goal over a fixture tree fact. -/
 example (P Q : Prop) (h : P ∧ Q) : Q := by
   jev_calibration structural
   exact h.2

@@ -18,26 +18,26 @@ private def retrievedActions : ActionSource := fun config =>
 private def retrievalThenLocalActions : ActionSource := fun config => do
   let retrieved ← globalActions config.maxRetrievedNames
   let h := mkIdent `h
-  return retrieved.filter (·.text == "apply sipserAcceptance_from") ++ [
+  return retrieved.filter (·.text == "apply retrievalTarget_from") ++ [
     { tacticSyntax := ← `(tactic| exact $h), text := "exact h" }
   ]
 
-def SipserAcceptance (n : Nat) : Prop := n = n
+def RetrievalTarget (n : Nat) : Prop := n = n
 
-lemma sipserAcceptance_global (n : Nat) : SipserAcceptance n := rfl
+lemma retrievalTarget_global (n : Nat) : RetrievalTarget n := rfl
 
-lemma sipserAcceptance_zero : SipserAcceptance 0 := rfl
+lemma retrievalTarget_zero : RetrievalTarget 0 := rfl
 
-lemma sipserAcceptance_from (n : Nat) (h : n = 0) : SipserAcceptance n := by
+lemma retrievalTarget_from (n : Nat) (h : n = 0) : RetrievalTarget n := by
   subst n
   rfl
 
-def SipserAccepted (n : Nat) : Prop := n = 0
+def EqualityTarget (n : Nat) : Prop := n = 0
 
-def SipserClosure (p : Prop) : Prop := p ∧ True
+def NormalizationTarget (p : Prop) : Prop := p ∧ True
 
-@[simp] lemma sipserClosure_normalize (p : Prop) : SipserClosure p = p := by
-  simp [SipserClosure]
+@[simp] lemma normalizationTarget_normalize (p : Prop) : NormalizationTarget p = p := by
+  simp [NormalizationTarget]
 
 private def rewriteThenCloseActions : ActionSource := fun config => do
   return (← rewriteActions config) ++ [
@@ -191,25 +191,25 @@ elab "jev_test_global_retrieval" : tactic => withMainContext do
   let root ← initialNode
   unless (← expand root actions).length == actions.length do
     throwError "global retrieval admitted a candidate that does not elaborate in the focused state"
-  unless actions.any fun action => action.text == "exact sipserAcceptance_zero" do
+  unless actions.any fun action => action.text == "exact retrievalTarget_zero" do
     throwError "type-correct global exact candidate was not retrieved"
   unless actions.all fun action => action.text != "exact definitely_missing_lemma" do
     throwError "retrieval invented an unavailable name"
   let some node ← searchWith { maxDepth := 1, maxCost := 1, maxRetrievedNames := 64 }
       retrievedActions identityRanker
     | throwError "retrieval search found no path"
-  unless node.path.map (·.text) == ["exact sipserAcceptance_zero"] do
+  unless node.path.map (·.text) == ["exact retrievalTarget_zero"] do
     throwError "retrieval did not select the global exact candidate"
   replay node.path
 
 elab "jev_test_global_apply_retrieval" : tactic => withMainContext do
   let actions ← retrievedActions { maxRetrievedNames := 64 }
-  unless actions.any fun action => action.text == "apply sipserAcceptance_from" do
+  unless actions.any fun action => action.text == "apply retrievalTarget_from" do
     throwError "type-correct global apply candidate was not retrieved"
   let some node ← searchWith { maxDepth := 2, maxCost := 2, maxRetrievedNames := 64 }
       retrievalThenLocalActions identityRanker
     | throwError "retrieval apply search found no path"
-  unless node.path.map (·.text) == ["apply sipserAcceptance_from", "exact h"] do
+  unless node.path.map (·.text) == ["apply retrievalTarget_from", "exact h"] do
     throwError "retrieval did not retain a type-correct global apply candidate"
   replay node.path
 
@@ -235,12 +235,12 @@ elab "jev_test_rewrite_closure" : tactic => withMainContext do
   let actions ← rewriteActions config
   unless actions.any fun action => action.text == "rw [h]" do
     throwError "closure equality did not produce a forward rewrite"
-  unless actions.any fun action => action.text == "simp only [sipserClosure_normalize]" do
+  unless actions.any fun action => action.text == "simp only [normalizationTarget_normalize]" do
     throwError "closure normalization did not produce a matched simp-only action: {actions.map (·.text)}"
   let some node ← searchWith config rewriteThenCloseActions identityRanker
     | throwError "closure rewrite search found no path"
   unless node.path.map (·.text) ==
-      ["rw [h]", "simp only [sipserClosure_normalize]"] do
+      ["rw [h]", "simp only [normalizationTarget_normalize]"] do
     throwError "closure normalization path is not replayable: {node.path.map (·.text)}"
   replay node.path
 
@@ -530,20 +530,20 @@ example (xs : List Nat) : JevLean.tally xs = xs.length := by
 example (P Q : Prop) (h : P → Q) (hp : P) : Q := by
   jev_test_apply_path
 
-/-- A Sipser-shaped target is solved by a named global lemma absent from the local catalogue. -/
-example : SipserAcceptance 0 := by
+/-- A fixture target is solved by a named global lemma absent from the local catalogue. -/
+example : RetrievalTarget 0 := by
   jev_test_global_retrieval
 
 /-- Retrieved global applications open ordinary local proof obligations. -/
-example (n : Nat) (h : n = 0) : SipserAcceptance n := by
+example (n : Nat) (h : n = 0) : RetrievalTarget n := by
   jev_test_global_apply_retrieval
 
 /-- Generated equality rewrites solve the acceptance shape and replay from the root state. -/
-example (n : Nat) (h : n = 0) : SipserAccepted n = SipserAccepted 0 := by
+example (n : Nat) (h : n = 0) : EqualityTarget n = EqualityTarget 0 := by
   jev_test_rewrite_acceptance
 
 /-- Generated simp-only normalization follows an equality rewrite and replays from the root state. -/
-example (n : Nat) (h : n = 0) : SipserClosure (n = 0) := by
+example (n : Nat) (h : n = 0) : NormalizationTarget (n = 0) := by
   jev_test_rewrite_closure
 
 /-- Universally quantified local equalities expose a readable symmetric application. -/

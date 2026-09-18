@@ -6,7 +6,7 @@ Use this report when changing the default `JevLean.Search.Config` limits or a ca
 
 The fixture runs six frozen goals with the deterministic identity ranker. The ranker seam exercises the scheduler and counts rank invocations without a credential or network request. Each successful path is replayed from the original tactic state. The `pre_work` comparator preserves the core scheduler and disables retrieval, rewrite, unfolding, local-application, added structural bounds, and transpositions. `accumulated` uses `Config` defaults.
 
-The goals include a plain local close plus Sipser-shaped retrieval, equality normalization, definition-head, local application, and structural-destructuring states. They are representative proof states, not imported Sipser theorems. Existing committed next-step and progress benchmarks remain frozen ranking studies with different candidate formats, so their recorded scores are not combined with this end-to-end search result.
+The goals include a plain local close plus fixture retrieval, equality normalization, definition-head, local application, and structural-destructuring states. They are representative proof states, not imported source theorems. Existing committed next-step and progress benchmarks remain frozen ranking studies with different candidate formats, so their recorded scores are not combined with this end-to-end search result.
 
 ## Recorded result
 
