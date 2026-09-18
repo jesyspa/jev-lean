@@ -5,7 +5,7 @@ The executable experiment lives in `jevlean/`. This module pins and checks the
 Lean/Mathlib environment used to verify candidate actions.
 -/
 
-import Mathlib
+import Aesop
 import Mathlib.Tactic.TryThis
 
 namespace JevLean
@@ -82,7 +82,6 @@ private def closingActions : TacticM (List Action) := do
     { tacticSyntax := ← `(tactic| assumption), text := "assumption" },
     { tacticSyntax := ← `(tactic| simp), text := "simp" },
     { tacticSyntax := ← `(tactic| omega), text := "omega" },
-    { tacticSyntax := ← `(tactic| norm_num), text := "norm_num" },
     { tacticSyntax := ← `(tactic| aesop (config := { terminal := true, maxRuleApplications := 32 })),
       text := "aesop (config := { terminal := true, maxRuleApplications := 32 })" }
   ]
@@ -103,7 +102,18 @@ private def localActions : TacticM (List Action) := do
 def catalogue : TacticM (List Action) := do
   return (← structuralActions) ++ (← localActions) ++ (← closingActions)
 
-/-- Ask the external ranker to order fixed catalogue entries, retaining local order on failure. -/
+private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
+
+private def applyRanking? (actions : List Action) (indices : List Nat) : Option (List Action) := do
+  if indices.length != actions.length || indices.eraseDups.length != actions.length ||
+      indices.any fun index => index == 0 || index > actions.length then
+    none
+  let ranked := indices.filterMap fun index => actions[index - 1]?
+  if ranked.length == actions.length then some ranked else none
+
+/-- Ask the external ranker to order fixed catalogue entries, retaining local order on failure.
+Successful rankings are cached for the lifetime of the Lean process so incremental re-elaboration
+of an unchanged proof state does not repeat the external call. -/
 def rank (context : RankContext) (actions : List Action) : TacticM (List Action) := do
   let entries := actions.zipIdx.map fun (action, index) =>
     Json.mkObj [("id", Json.str s!"A{index + 1}"), ("tactic", Json.str action.text)]
@@ -113,19 +123,22 @@ def rank (context : RankContext) (actions : List Action) : TacticM (List Action)
     ("path", Json.arr (context.path.map Json.str).toArray),
     ("actions", Json.arr entries.toArray)
   ]
+  let requestText := request.compress
+  if let some indices := (← rankCache.get).get? requestText then
+    if let some ranked := applyRanking? actions indices then
+      return ranked
   try
     let output ← IO.Process.output {
       cmd := "python3"
       args := #["-m", "jevlean.rank", "--plain", "--timeout-ms", toString context.remainingWallMs]
-    } (some request.compress)
+    } (some requestText)
     if output.exitCode != 0 then return actions
     let indices := output.stdout.splitOn "\n" |>.filterMap fun line =>
       if line.startsWith "A" then (line.drop 1).toNat? else none
-    if indices.length != actions.length || indices.eraseDups.length != actions.length ||
-        indices.any fun index => index == 0 || index > actions.length then
-      return actions
-    let ranked := indices.filterMap fun index => actions[index - 1]?
-    if ranked.length != actions.length then return actions
+    let some ranked := applyRanking? actions indices | return actions
+    rankCache.modify fun cache =>
+      let cache := if cache.size >= 1024 then {} else cache
+      cache.insert requestText indices
     return ranked
   catch _ => return actions
 
