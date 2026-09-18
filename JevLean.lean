@@ -22,6 +22,7 @@ structure Action where
   tacticSyntax : TSyntax `tactic
   text : String
   cost : Nat := 1
+  unfoldedConstants : List Name := []
 
 /-- A restorable search node. Goals retain Lean's active-goal order. -/
 structure Node where
@@ -45,6 +46,7 @@ structure Config where
   maxRewriteSimpLemmas : Nat := 4
   maxRewriteSimpNames : Nat := 256
   maxRewriteMs : Nat := 100
+  maxUnfoldCandidates : Nat := 4
 
 /-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
 structure RankContext where
@@ -228,10 +230,57 @@ def rewriteActions (config : Config) : TacticM (List Action) := do
             if ← candidateWorks action then actions := actions.concat action
   return actions
 
+private partial def headConstant? : Expr → Option Name
+  | .const name _ => some name
+  | .app function _ => headConstant? function
+  | .mdata _ body => headConstant? body
+  | .proj _ _ body => headConstant? body
+  | _ => none
+
+private def unfoldableDefinition (name : Name) : TacticM Bool := do
+  match (← getEnv).find? name with
+  | some (.defnInfo _) => return true
+  | _ => return false
+
+private def headDefinitions : TacticM (List (Option Name × Name)) := do
+  let goal ← getMainGoal
+  let target ← goal.getType
+  let lctx ← getLCtx
+  let candidates := match headConstant? (forallBody target) with
+    | some name => [(none, name)]
+    | none => []
+  lctx.foldlM (init := candidates) fun candidates decl => do
+    match headConstant? (forallBody decl.type) with
+    | some name => return candidates.concat (some decl.userName, name)
+    | none => return candidates
+
+/-- Generate checked `unfold` actions only for definition heads of the goal and local hypotheses.
+This avoids cataloguing unrelated reducible internals. -/
+def unfoldActions (config : Config) : TacticM (List Action) := do
+  let mut actions := []
+  for (location, name) in ← headDefinitions do
+    unless actions.length >= config.maxUnfoldCandidates do
+      if ← unfoldableDefinition name then
+        let ident := mkIdent name
+        let action ← match location with
+          | none => pure {
+              tacticSyntax := ← `(tactic| unfold $ident:ident), text := s!"unfold {name}",
+              unfoldedConstants := [name]
+            }
+          | some hypothesis =>
+            if hypothesis.isAnonymous || hypothesis.hasMacroScopes then continue
+            let hypothesis := mkIdent hypothesis
+            pure {
+              tacticSyntax := ← `(tactic| unfold $ident:ident at $hypothesis:ident),
+              text := s!"unfold {name} at {hypothesis.getId}", unfoldedConstants := [name]
+            }
+        if ← candidateWorks action then actions := actions.concat action
+  return actions
+
 /-- Build the finite, syntax-safe action catalogue for the current active goal. -/
 def catalogue (config : Config) : TacticM (List Action) := do
   return (← structuralActions) ++ (← localActions) ++ (← rewriteActions config) ++
-    (← globalActions config.maxRetrievedNames) ++ (← closingActions)
+    (← globalActions config.maxRetrievedNames) ++ (← unfoldActions config) ++ (← closingActions)
 
 private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
 
@@ -392,6 +441,12 @@ def rankContext (node : Node) : TacticM RankContext := do
       path := node.path.map (·.text)
     }
 
+/-- Remove actions which would unfold a definition already unfolded on this search path. -/
+def withoutRepeatedUnfolds (path actions : List Action) : List Action :=
+  actions.filter fun action =>
+    action.unfoldedConstants.all fun name =>
+      !path.any fun previous => previous.unfoldedConstants.contains name
+
 /-- Deterministic rank-guided depth-first search. Every configured budget spans the whole invocation. -/
 def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) := do
   let originalGoals ← getGoals
@@ -413,6 +468,7 @@ def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker)
         node.restore
         let (actions, calls) ← withMainContext do
           let actions ← source config
+          let actions := withoutRepeatedUnfolds node.path actions
           if calls >= config.maxJevCalls then
             pure (actions, calls)
           else

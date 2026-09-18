@@ -43,6 +43,26 @@ private def rewriteThenCloseActions : ActionSource := fun config => do
     { tacticSyntax := ← `(tactic| rfl), text := "rfl" }
   ]
 
+private def unfoldOnlyActions : ActionSource := fun config => unfoldActions config
+
+namespace Doubled
+
+def length_R (xs : List Nat) : Prop := True ∧ xs.length = xs.length
+
+end Doubled
+
+inductive TestStep where
+  | halt
+  | run
+
+def isHalting (step : TestStep) : Prop := step = .halt
+
+lemma stepHalt_of_isHalting (step : TestStep) (h : isHalting step) : step = .halt := by
+  unfold isHalting at h
+  exact h
+
+def irrelevantDefinition : Prop := True
+
 private def aesopFirst : ActionRanker := fun _ actions =>
   pure <| actions.mergeSort fun left right =>
     left.text.startsWith "aesop" && !right.text.startsWith "aesop"
@@ -155,6 +175,49 @@ elab "jev_test_rewrite_closure" : tactic => withMainContext do
       ["rw [h]", "simp only [sipserClosure_normalize]"] do
     throwError "closure normalization path is not replayable: {node.path.map (·.text)}"
   replay node.path
+
+elab "jev_test_unfold_goal_head" : tactic => withMainContext do
+  let config := { maxDepth := 2, maxCost := 2, maxUnfoldCandidates := 1 }
+  let actions ← unfoldActions config
+  let repeated ← unfoldActions config
+  unless actions.map (·.text) == ["unfold Doubled.length_R"] &&
+      actions.map (·.text) == repeated.map (·.text) do
+    throwError "goal-head unfolding was not bounded and deterministic: {actions.map (·.text)}"
+  let root ← initialNode
+  let successors ← expand root actions
+  unless successors.map (fun node => node.path.map (·.text)) == [["unfold Doubled.length_R"]] do
+    throwError "goal-head unfolding action did not replay: {successors.map (fun node => node.path.map (·.text))}"
+  let some action := actions.head? | throwError "missing goal-head unfolding action"
+  replay [action]
+  evalTactic (← `(tactic| exact ⟨True.intro, rfl⟩))
+
+elab "jev_test_unfold_hypothesis_head" : tactic => withMainContext do
+  let config := { maxDepth := 2, maxCost := 2, maxUnfoldCandidates := 1 }
+  let actions ← unfoldActions config
+  unless actions.map (·.text) == ["unfold isHalting at h"] do
+    throwError "hypothesis-head unfolding was not targeted: {actions.map (·.text)}"
+  let root ← initialNode
+  let successors ← expand root actions
+  unless successors.map (fun node => node.path.map (·.text)) == [["unfold isHalting at h"]] do
+    throwError "hypothesis-head unfolding action did not replay: {successors.map (fun node => node.path.map (·.text))}"
+  let some action := actions.head? | throwError "missing hypothesis-head unfolding action"
+  replay [action]
+  evalTactic (← `(tactic| assumption))
+
+elab "jev_test_unfold_path_guard" : tactic => withMainContext do
+  let actions ← unfoldOnlyActions { maxUnfoldCandidates := 1 }
+  let some action := actions.head? | throwError "missing path-guard unfolding action"
+  unless (withoutRepeatedUnfolds [] actions).map (·.text) == actions.map (·.text) &&
+      (withoutRepeatedUnfolds [action] actions).isEmpty do
+    throwError "the same definition was not excluded along one search path"
+  evalTactic (← `(tactic| unfold Doubled.length_R; exact ⟨True.intro, rfl⟩))
+
+elab "jev_test_unfold_avoids_irrelevant_definitions" : tactic => withMainContext do
+  let actions ← unfoldActions { maxUnfoldCandidates := 4 }
+  unless actions.any (·.text == "unfold Doubled.length_R") &&
+      actions.all (·.text != "unfold irrelevantDefinition") do
+    throwError "unfolding catalogued an irrelevant definition: {actions.map (·.text)}"
+  evalTactic (← `(tactic| unfold Doubled.length_R; exact ⟨True.intro, rfl⟩))
 
 elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
   let some node ← searchWith { maxDepth := 2, maxCost := 2 } catalogue aesopFirst
@@ -283,6 +346,22 @@ example (n : Nat) (h : n = 0) : SipserAccepted n = SipserAccepted 0 := by
 /-- Generated simp-only normalization follows an equality rewrite and replays from the root state. -/
 example (n : Nat) (h : n = 0) : SipserClosure (n = 0) := by
   jev_test_rewrite_closure
+
+/-- Goal-head definitions receive bounded replayable unfolding candidates. -/
+example (xs : List Nat) : Doubled.length_R xs := by
+  jev_test_unfold_goal_head
+
+/-- `stepHalt_of_isHalting`-shaped hypotheses receive targeted replayable unfolding candidates. -/
+example (step : TestStep) (h : isHalting step) : step = .halt := by
+  jev_test_unfold_hypothesis_head
+
+/-- Repeated definition unfolding is excluded from a search path. -/
+example (xs : List Nat) : Doubled.length_R xs := by
+  jev_test_unfold_path_guard
+
+/-- Definitions outside the focused goal and hypothesis heads never enter the unfolding catalogue. -/
+example (xs : List Nat) : Doubled.length_R xs := by
+  jev_test_unfold_avoids_irrelevant_definitions
 
 /-- Tests can force aesop first and do not assume a structural action wins ranking. -/
 example (P : Prop) : P → P := by
