@@ -225,7 +225,7 @@ def check_lean(outcome_path: Path = DEFAULT_OUTCOMES, timeout: float = 600.0) ->
     data = load_benchmark()
     markers: list[tuple[str, str]] = []
     chunks = [
-        "import JevLean\n",
+        "import JevLean\nimport Mathlib\n",
         "set_option linter.unreachableTactic false\nset_option linter.unusedTactic false\n",
     ]
     for case in data["tactic_cases"]:

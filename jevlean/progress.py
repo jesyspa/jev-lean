@@ -309,7 +309,7 @@ def _lemma_tactic(name: str, arguments: list[str]) -> str:
 
 def check_lean(timeout: float = 900.0) -> dict[str, Any]:
     data = load_data()
-    chunks = ["import JevLean\n", "set_option linter.unreachableTactic false\nset_option linter.unusedTactic false\n"]
+    chunks = ["import JevLean\nimport Mathlib\n", "set_option linter.unreachableTactic false\nset_option linter.unusedTactic false\n"]
     progress_meta: list[tuple[str, str]] = []
     for case in data["progress_cases"]:
         for action in generate_actions(case, data):
