@@ -680,6 +680,10 @@ structure SearchMetrics where
   expandedNodes : Nat := 0
   /-- Number of ranker invocations, including deterministic benchmark rankers. -/
   jevCalls : Nat := 0
+  /-- Number of helper-provider requests admitted by the deterministic gate. -/
+  helperRequests : Nat := 0
+  /-- Number of checked helper-cut actions offered to the scheduler. -/
+  helperActions : Nat := 0
   attemptedTransitions : Nat := 0
   admittedSuccessors : Nat := 0
   duplicateSuccessors : Nat := 0
@@ -726,21 +730,20 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
           return (none, { metrics with elapsedMs := elapsed - start })
         else
           node.restore
-          let (actions, calls) ← withMainContext do
+          let (actions, calls, helperRequested, helperActionCount) ← withMainContext do
             let actions ← source config
             let actions := withoutRepeatedUnfolds node.path actions
             let context ← rankContext node
-            let helperCuts ← if config.enableLlmHelpers &&
-                helperNeedProbability context >= config.helperProbabilityThreshold then
-              helperActions config context
-            else pure []
+            let helperRequested := config.enableLlmHelpers &&
+              helperNeedProbability context >= config.helperProbabilityThreshold
+            let helperCuts ← if helperRequested then helperActions config context else pure []
             let actions := helperCuts ++ actions
             if calls >= config.maxJevCalls then
-              pure (actions, calls)
+              pure (actions, calls, helperRequested, helperCuts.length)
             else
               let now ← IO.monoMsNow
               let context := { context with remainingWallMs := start + config.maxWallMs - now }
-              return (← ranker context actions, calls + 1)
+              return (← ranker context actions, calls + 1, helperRequested, helperCuts.length)
           let remainingAttempts := config.maxHeartbeats - attempts
           let deadline := start + config.maxWallMs
           let (successors, usedAttempts) ← expandUpTo node actions remainingAttempts (some deadline)
@@ -759,6 +762,8 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
           let metrics := { metrics with
             expandedNodes := metrics.expandedNodes + 1
             jevCalls := calls
+            helperRequests := metrics.helperRequests + if helperRequested then 1 else 0
+            helperActions := metrics.helperActions + helperActionCount
             attemptedTransitions := metrics.attemptedTransitions + usedAttempts
             admittedSuccessors := metrics.admittedSuccessors + admitted.length
             duplicateSuccessors := metrics.duplicateSuccessors + duplicates
@@ -839,12 +844,28 @@ def replaySuggestion (path : List Action) (indent : Nat := 0) : TacticM String :
     steps := steps.concat (action, goalsAfter.length - siblingCount)
   renderForest rootCount indent steps
 
-/-- Search ordinary locally generated actions and provide a replayable replacement. -/
-elab "jev?" : tactic => withMainContext do
+private def metricsJson (metrics : SearchMetrics) : Json := Json.mkObj [
+  ("expanded_nodes", Json.num metrics.expandedNodes),
+  ("jev_calls", Json.num metrics.jevCalls),
+  ("helper_requests", Json.num metrics.helperRequests),
+  ("helper_actions", Json.num metrics.helperActions),
+  ("attempted_transitions", Json.num metrics.attemptedTransitions),
+  ("admitted_successors", Json.num metrics.admittedSuccessors),
+  ("duplicate_successors", Json.num metrics.duplicateSuccessors),
+  ("repeated_action_families", Json.num metrics.repeatedActionFamilies),
+  ("transposition_entries", Json.num metrics.transpositionEntries),
+  ("elapsed_ms", Json.num metrics.elapsedMs)
+]
+
+private def searchConfig : TacticM Config := do
   let helpersEnabled := (← IO.getEnv "JEV_LLM_HELPERS") == some "1"
   if helpersEnabled && (← IO.getEnv "OPENROUTER_API_KEY").getD "" == "" then
     logWarning "jev?: LLM helpers are enabled but OPENROUTER_API_KEY is missing; continuing without helpers"
-  let config : Config := { enableLlmHelpers := helpersEnabled }
+  return { enableLlmHelpers := helpersEnabled }
+
+/-- Search ordinary locally generated actions and provide a replayable replacement. -/
+elab "jev?" : tactic => withMainContext do
+  let config ← searchConfig
   match ← searchWith config catalogue rank with
   | none => throwError "jev? found no closing path in its bounded catalogue"
   | some node =>
@@ -854,6 +875,38 @@ elab "jev?" : tactic => withMainContext do
     let (indent, _) := Lean.Meta.Tactic.TryThis.getIndentAndColumn (← getFileMap) range
     let suggestion ← replaySuggestion node.path indent
     Lean.Meta.Tactic.TryThis.addSuggestion ref { suggestion }
+
+/-- Headless benchmark entry point. It emits one machine-readable result after replaying a close. -/
+elab "jev_benchmark?" : tactic => withMainContext do
+  let config ← searchConfig
+  let (result, metrics) ← searchWithMetrics config catalogue rank
+  match result with
+  | none =>
+    logInfo m!"JEVLEAN_BENCHMARK_RESULT {Json.mkObj [
+      ("status", Json.str "failed"),
+      ("failure", Json.str "bounded search found no closing path"),
+      ("proof", Json.null),
+      ("metrics", metricsJson metrics),
+      ("usage", Json.mkObj [
+        ("jev_calls", Json.num metrics.jevCalls),
+        ("helper_requests", Json.num metrics.helperRequests),
+        ("helper_actions", Json.num metrics.helperActions)
+      ])
+    ] |>.compress}"
+    throwError "jev_benchmark?: bounded search found no closing path"
+  | some node =>
+    let proof ← replaySuggestion node.path
+    logInfo m!"JEVLEAN_BENCHMARK_RESULT {Json.mkObj [
+      ("status", Json.str "solved"),
+      ("failure", Json.null),
+      ("proof", Json.str proof),
+      ("metrics", metricsJson metrics),
+      ("usage", Json.mkObj [
+        ("jev_calls", Json.num metrics.jevCalls),
+        ("helper_requests", Json.num metrics.helperRequests),
+        ("helper_actions", Json.num metrics.helperActions)
+      ])
+    ] |>.compress}"
 
 end Search
 

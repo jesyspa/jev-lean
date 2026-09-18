@@ -1,0 +1,666 @@
+{
+  "archive_md5": "25e1ee60cd8925b9d2e8673ddcc34b4c",
+  "benchmark": "LeanDojo Benchmark 4",
+  "dataset_version": "v10",
+  "lean_toolchain": "leanprover/lean4:v4.10.0-rc1",
+  "mathlib_commit": "29dcec074de168ac2bf835a77ef68bbe069194c5",
+  "mathlib_url": "https://github.com/leanprover-community/mathlib4",
+  "schema": 1,
+  "selection": "first 50 Mathlib/ tasks by sha256(file_path + NUL + full_name)",
+  "split": "novel_premises/test",
+  "split_sha256": "6c001d1cacd141a4301965fa03cb3c756c19aa09fb30daf9cb2ccb48396ff3fe",
+  "tasks": [
+    {
+      "end": [
+        111,
+        63
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/ProjectiveSpectrum/Topology.lean",
+      "full_name": "ProjectiveSpectrum.mem_vanishingIdeal",
+      "id": "ld4-00118da52bc445ea",
+      "start": [
+        109,
+        1
+      ]
+    },
+    {
+      "end": [
+        244,
+        98
+      ],
+      "file_path": "Mathlib/Algebra/Order/Kleene.lean",
+      "full_name": "kstar_mono",
+      "id": "ld4-0033ad11b0f8d534",
+      "start": [
+        242,
+        1
+      ]
+    },
+    {
+      "end": [
+        863,
+        65
+      ],
+      "file_path": "Mathlib/Algebra/Homology/ShortComplex/Homology.lean",
+      "full_name": "CategoryTheory.ShortComplex.homology\u03b9_comp_fromOpcycles",
+      "id": "ld4-00783a476279a77a",
+      "start": [
+        859,
+        1
+      ]
+    },
+    {
+      "end": [
+        76,
+        38
+      ],
+      "file_path": "Mathlib/Algebra/Module/Zlattice/Covolume.lean",
+      "full_name": "Zlattice.covolume_eq_det_mul_measure",
+      "id": "ld4-008dee143ae9fd20",
+      "start": [
+        67,
+        1
+      ]
+    },
+    {
+      "end": [
+        397,
+        59
+      ],
+      "file_path": "Mathlib/Algebra/Order/Monovary.lean",
+      "full_name": "antivary_iff_forall_mul_nonpos",
+      "id": "ld4-0093a5bc5ddc3970",
+      "start": [
+        396,
+        1
+      ]
+    },
+    {
+      "end": [
+        2293,
+        73
+      ],
+      "file_path": "Mathlib/Algebra/BigOperators/Group/Finset.lean",
+      "full_name": "Fintype.prod_of_injective",
+      "id": "ld4-00f0cadaffed4f65",
+      "start": [
+        2290,
+        1
+      ]
+    },
+    {
+      "end": [
+        2087,
+        74
+      ],
+      "file_path": "Mathlib/Algebra/BigOperators/Group/Finset.lean",
+      "full_name": "Finset.sum_card_fiberwise_eq_card_filter",
+      "id": "ld4-01110ae48123b0b0",
+      "start": [
+        2085,
+        1
+      ]
+    },
+    {
+      "end": [
+        640,
+        42
+      ],
+      "file_path": "Mathlib/Computability/TuringMachine.lean",
+      "full_name": "Turing.Tape.mk'_nth_nat",
+      "id": "ld4-01249b147f2d2061",
+      "start": [
+        638,
+        1
+      ]
+    },
+    {
+      "end": [
+        263,
+        40
+      ],
+      "file_path": "Mathlib/Algebra/GCDMonoid/Basic.lean",
+      "full_name": "Associates.out_injective",
+      "id": "ld4-0141aba57c96fd95",
+      "start": [
+        262,
+        1
+      ]
+    },
+    {
+      "end": [
+        90,
+        82
+      ],
+      "file_path": "Mathlib/Algebra/Lie/Normalizer.lean",
+      "full_name": "LieSubmodule.top_lie_le_iff_le_normalizer",
+      "id": "ld4-018463d62c338f73",
+      "start": [
+        89,
+        1
+      ]
+    },
+    {
+      "end": [
+        497,
+        6
+      ],
+      "file_path": "Mathlib/Algebra/RingQuot.lean",
+      "full_name": "RingQuot.eq_lift_comp_mkRingHom",
+      "id": "ld4-01c3e9e56bd8dead",
+      "start": [
+        493,
+        1
+      ]
+    },
+    {
+      "end": [
+        979,
+        30
+      ],
+      "file_path": "Mathlib/Algebra/BigOperators/Finprod.lean",
+      "full_name": "finprod_mem_range",
+      "id": "ld4-01ce69f478ba0963",
+      "start": [
+        978,
+        1
+      ]
+    },
+    {
+      "end": [
+        651,
+        78
+      ],
+      "file_path": "Mathlib/Algebra/Order/Module/Defs.lean",
+      "full_name": "neg_iff_neg_of_smul_pos",
+      "id": "ld4-01dc2c46c0a8bd45",
+      "start": [
+        649,
+        1
+      ]
+    },
+    {
+      "end": [
+        450,
+        67
+      ],
+      "file_path": "Mathlib/Algebra/MvPolynomial/Basic.lean",
+      "full_name": "MvPolynomial.induction_on''",
+      "id": "ld4-01ee66015dc90964",
+      "start": [
+        442,
+        1
+      ]
+    },
+    {
+      "end": [
+        224,
+        51
+      ],
+      "file_path": "Mathlib/Computability/Reduce.lean",
+      "full_name": "Computable.equiv\u2082",
+      "id": "ld4-01ef50d7bb217457",
+      "start": [
+        222,
+        1
+      ]
+    },
+    {
+      "end": [
+        906,
+        58
+      ],
+      "file_path": "Mathlib/Computability/AkraBazzi/AkraBazzi.lean",
+      "full_name": "AkraBazziRecurrence.isTheta_deriv_rpow_p_mul_one_add_smoothingFn",
+      "id": "ld4-0202844f08590943",
+      "start": [
+        900,
+        1
+      ]
+    },
+    {
+      "end": [
+        1719,
+        65
+      ],
+      "file_path": "Mathlib/Algebra/MvPolynomial/Basic.lean",
+      "full_name": "MvPolynomial.aevalTower_comp_toAlgHom",
+      "id": "ld4-020357d8ba4a24d5",
+      "start": [
+        1717,
+        1
+      ]
+    },
+    {
+      "end": [
+        759,
+        7
+      ],
+      "file_path": "Mathlib/Algebra/Algebra/Unitization.lean",
+      "full_name": "NonUnitalAlgHom.toAlgHom_zero",
+      "id": "ld4-0207ab39aa349a5f",
+      "start": [
+        755,
+        1
+      ]
+    },
+    {
+      "end": [
+        1022,
+        6
+      ],
+      "file_path": "Mathlib/Algebra/Lie/Basic.lean",
+      "full_name": "LieModuleEquiv.toEquiv_mk",
+      "id": "ld4-020f3f79288004b8",
+      "start": [
+        1020,
+        1
+      ]
+    },
+    {
+      "end": [
+        149,
+        78
+      ],
+      "file_path": "Mathlib/Algebra/Category/ModuleCat/Adjunctions.lean",
+      "full_name": "ModuleCat.Free.right_unitality",
+      "id": "ld4-0212e532640c9af3",
+      "start": [
+        132,
+        1
+      ]
+    },
+    {
+      "end": [
+        296,
+        50
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/EllipticCurve/Projective.lean",
+      "full_name": "WeierstrassCurve.Projective.equiv_zero_of_Z_eq_zero",
+      "id": "ld4-021931fbe81c2386",
+      "start": [
+        294,
+        1
+      ]
+    },
+    {
+      "end": [
+        1446,
+        17
+      ],
+      "file_path": "Mathlib/Computability/TMToPartrec.lean",
+      "full_name": "Turing.PartrecToTM2.trNat_natEnd",
+      "id": "ld4-0247555c44eb76af",
+      "start": [
+        1445,
+        1
+      ]
+    },
+    {
+      "end": [
+        582,
+        15
+      ],
+      "file_path": "Mathlib/Algebra/CubicDiscriminant.lean",
+      "full_name": "Cubic.disc_ne_zero_iff_roots_ne",
+      "id": "ld4-027bc2177036b4c7",
+      "start": [
+        578,
+        1
+      ]
+    },
+    {
+      "end": [
+        339,
+        43
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/EllipticCurve/Affine.lean",
+      "full_name": "WeierstrassCurve.Affine.Y_sub_negPolynomial",
+      "id": "ld4-028afcd299b798ca",
+      "start": [
+        338,
+        1
+      ]
+    },
+    {
+      "end": [
+        131,
+        67
+      ],
+      "file_path": "Mathlib/Algebra/Homology/ShortComplex/RightHomology.lean",
+      "full_name": "CategoryTheory.ShortComplex.RightHomologyData.isIso_p",
+      "id": "ld4-028deac0a5f8fb90",
+      "start": [
+        129,
+        1
+      ]
+    },
+    {
+      "end": [
+        177,
+        12
+      ],
+      "file_path": "Mathlib/Algebra/MonoidAlgebra/Grading.lean",
+      "full_name": "AddMonoidAlgebra.decomposeAux_coe",
+      "id": "ld4-02d48c1f00abe11b",
+      "start": [
+        153,
+        1
+      ]
+    },
+    {
+      "end": [
+        100,
+        50
+      ],
+      "file_path": "Mathlib/Algebra/Lie/NonUnitalNonAssocAlgebra.lean",
+      "full_name": "LieHom.toNonUnitalAlgHom_injective",
+      "id": "ld4-0321c20fd7d2368d",
+      "start": [
+        98,
+        1
+      ]
+    },
+    {
+      "end": [
+        386,
+        27
+      ],
+      "file_path": "Mathlib/Algebra/MvPolynomial/Basic.lean",
+      "full_name": "MvPolynomial.monomial_finsupp_sum_index",
+      "id": "ld4-033536212f9fb14d",
+      "start": [
+        384,
+        1
+      ]
+    },
+    {
+      "end": [
+        501,
+        34
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/Scheme.lean",
+      "full_name": "AlgebraicGeometry.Scheme.basicOpen_mul",
+      "id": "ld4-0367c4a33fac8265",
+      "start": [
+        500,
+        1
+      ]
+    },
+    {
+      "end": [
+        404,
+        73
+      ],
+      "file_path": "Mathlib/Testing/SlimCheck/Functions.lean",
+      "full_name": "SlimCheck.InjectiveFunction.applyId_injective",
+      "id": "ld4-036dce2d02ccd861",
+      "start": [
+        380,
+        1
+      ]
+    },
+    {
+      "end": [
+        1846,
+        77
+      ],
+      "file_path": "Mathlib/Algebra/MonoidAlgebra/Basic.lean",
+      "full_name": "AddMonoidAlgebra.nonUnitalAlgHom_ext'",
+      "id": "ld4-03c63fe21977860c",
+      "start": [
+        1844,
+        1
+      ]
+    },
+    {
+      "end": [
+        1011,
+        29
+      ],
+      "file_path": "Mathlib/Algebra/BigOperators/Finprod.lean",
+      "full_name": "finprod_comp_equiv",
+      "id": "ld4-0447471d9530877c",
+      "start": [
+        1010,
+        1
+      ]
+    },
+    {
+      "end": [
+        65,
+        86
+      ],
+      "file_path": "Mathlib/Algebra/Homology/ConcreteCategory.lean",
+      "full_name": "CategoryTheory.ShortComplex.ShortExact.\u03b4_apply'",
+      "id": "ld4-047d672cfd533eed",
+      "start": [
+        57,
+        1
+      ]
+    },
+    {
+      "end": [
+        481,
+        83
+      ],
+      "file_path": "Mathlib/Algebra/Associated.lean",
+      "full_name": "associated_one_of_associated_mul_one",
+      "id": "ld4-047e7ce1a55ff959",
+      "start": [
+        480,
+        1
+      ]
+    },
+    {
+      "end": [
+        164,
+        6
+      ],
+      "file_path": "Mathlib/Algebra/Algebra/Opposite.lean",
+      "full_name": "AlgEquiv.toRingEquiv_unop",
+      "id": "ld4-0488b806e07e7418",
+      "start": [
+        162,
+        1
+      ]
+    },
+    {
+      "end": [
+        310,
+        19
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/AffineScheme.lean",
+      "full_name": "AlgebraicGeometry.Scheme.Hom.isAffineOpen_iff_of_isOpenImmersion",
+      "id": "ld4-0489d938ee1c0d2a",
+      "start": [
+        300,
+        1
+      ]
+    },
+    {
+      "end": [
+        568,
+        40
+      ],
+      "file_path": "Mathlib/Algebra/BigOperators/Group/Finset.lean",
+      "full_name": "Finset.prod_mul_prod_compl",
+      "id": "ld4-0494cc32eef643d2",
+      "start": [
+        566,
+        1
+      ]
+    },
+    {
+      "end": [
+        49,
+        31
+      ],
+      "file_path": "Mathlib/Algebra/Order/Interval/Multiset.lean",
+      "full_name": "Multiset.map_add_right_Ico",
+      "id": "ld4-04da01b0bc8fdd82",
+      "start": [
+        47,
+        1
+      ]
+    },
+    {
+      "end": [
+        883,
+        16
+      ],
+      "file_path": "Mathlib/Algebra/Order/ToIntervalMod.lean",
+      "full_name": "toIxxMod_cyclic_left",
+      "id": "ld4-04dff8fe1731aeed",
+      "start": [
+        864,
+        9
+      ]
+    },
+    {
+      "end": [
+        94,
+        64
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/Morphisms/UniversallyClosed.lean",
+      "full_name": "AlgebraicGeometry.universallyClosed_isLocalAtTarget",
+      "id": "ld4-04f4adfb8b38957d",
+      "start": [
+        88,
+        1
+      ]
+    },
+    {
+      "end": [
+        121,
+        69
+      ],
+      "file_path": "Mathlib/Algebra/MvPolynomial/CommRing.lean",
+      "full_name": "MvPolynomial.vars_sub_of_disjoint",
+      "id": "ld4-05041e0b289fe4e4",
+      "start": [
+        118,
+        1
+      ]
+    },
+    {
+      "end": [
+        276,
+        75
+      ],
+      "file_path": "Mathlib/Algebra/Order/Interval/Set/Group.lean",
+      "full_name": "Set.pairwise_disjoint_Ioo_intCast",
+      "id": "ld4-055224fc5717a30b",
+      "start": [
+        275,
+        1
+      ]
+    },
+    {
+      "end": [
+        96,
+        76
+      ],
+      "file_path": "Mathlib/Algebra/Periodic.lean",
+      "full_name": "Finset.periodic_prod",
+      "id": "ld4-05aa1652014ae428",
+      "start": [
+        94,
+        1
+      ]
+    },
+    {
+      "end": [
+        450,
+        51
+      ],
+      "file_path": "Mathlib/Algebra/Order/Group/Abs.lean",
+      "full_name": "sub_lt_of_abs_sub_lt_right",
+      "id": "ld4-05b572deb0687423",
+      "start": [
+        449,
+        1
+      ]
+    },
+    {
+      "end": [
+        247,
+        6
+      ],
+      "file_path": "Mathlib/Algebra/RingQuot.lean",
+      "full_name": "RingQuot.mul_quot",
+      "id": "ld4-05c4f4c1f5493882",
+      "start": [
+        244,
+        1
+      ]
+    },
+    {
+      "end": [
+        174,
+        44
+      ],
+      "file_path": "Mathlib/Algebra/Category/ModuleCat/Free.lean",
+      "full_name": "ModuleCat.free_shortExact_finrank_add",
+      "id": "ld4-05e61d6d8f5bcdcd",
+      "start": [
+        166,
+        1
+      ]
+    },
+    {
+      "end": [
+        449,
+        42
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/ProjectiveSpectrum/Topology.lean",
+      "full_name": "ProjectiveSpectrum.basicOpen_eq_union_of_projection",
+      "id": "ld4-05f803f7ea558d66",
+      "start": [
+        436,
+        1
+      ]
+    },
+    {
+      "end": [
+        1119,
+        74
+      ],
+      "file_path": "Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean",
+      "full_name": "WeierstrassCurve.Jacobian.addY_neg",
+      "id": "ld4-06064848d830a099",
+      "start": [
+        1118,
+        1
+      ]
+    },
+    {
+      "end": [
+        139,
+        54
+      ],
+      "file_path": "Mathlib/Algebra/Star/CHSH.lean",
+      "full_name": "CHSH_inequality_of_comm",
+      "id": "ld4-061d6588ba0ebf6e",
+      "start": [
+        122,
+        1
+      ]
+    },
+    {
+      "end": [
+        150,
+        6
+      ],
+      "file_path": "Mathlib/Algebra/Category/Grp/Colimits.lean",
+      "full_name": "AddCommGrp.Colimits.quot_add",
+      "id": "ld4-0640ca804a85c97c",
+      "start": [
+        146,
+        1
+      ]
+    }
+  ],
+  "tasks_sha256": "95e045dd0d850a0f73547faeece385ba82e338f1840e10a14925db10e367d2b1",
+  "zenodo_record": 12740403
+}
