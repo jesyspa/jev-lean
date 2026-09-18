@@ -21,9 +21,11 @@ from .progress import load_index, retrieve
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "next-step-100.json"
 FREEZE_PATH = ROOT / "data" / "next-step-100-prompt-freeze.json"
-TRACE_PATH = ROOT / "artifacts" / "next-step-100-jev-1.13.0-trace.jsonl"
-OUTCOME_PATH = ROOT / "artifacts" / "next-step-100-lean-outcomes.json"
-METRICS_PATH = ROOT / "artifacts" / "next-step-100-metrics.json"
+RESULT_FILENAMES = {
+    "trace": "next-step-100-jev-1.13.0-trace.jsonl",
+    "outcomes": "next-step-100-lean-outcomes.json",
+    "metrics": "next-step-100-metrics.json",
+}
 SEED = 20_260_917
 SOURCE_REVISION = "57ac584959f03a3e98c4decf04162cd3a1af6b59"
 SOURCE_URL = "https://github.com/komiputer/sipser"
@@ -38,6 +40,13 @@ TOP_LEVEL_RE = re.compile(r"^\S")
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def result_paths(results_dir: Path) -> dict[str, Path]:
+    directory = results_dir.resolve()
+    if ROOT == directory or ROOT in directory.parents:
+        raise ValueError("next-step result artifacts must be stored outside the repository")
+    return {name: directory / filename for name, filename in RESULT_FILENAMES.items()}
 
 
 def load_data() -> dict[str, Any]:
@@ -393,7 +402,7 @@ def validate_response(response: dict[str, Any], payload: dict[str, Any]) -> None
         raise ValueError("choice probabilities do not sum to one")
 
 
-def live() -> list[dict[str, Any]]:
+def live(trace_path: Path) -> list[dict[str, Any]]:
     data = load_data()
     verify_freeze(data)
     client = TypeSafeClient(os.environ.get("TYPESAFE_API_KEY", ""))
@@ -415,15 +424,16 @@ def live() -> list[dict[str, Any]]:
             }
         )
         print(f"{case['id']}: {response['answers']['decision']['choice']}")
-    with TRACE_PATH.open("w", encoding="utf-8") as handle:
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    with trace_path.open("w", encoding="utf-8") as handle:
         for record in records:
             handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
     return records
 
 
-def load_trace(data: dict[str, Any]) -> list[dict[str, Any]]:
+def load_trace(data: dict[str, Any], trace_path: Path) -> list[dict[str, Any]]:
     verify_freeze(data)
-    records = [json.loads(line) for line in TRACE_PATH.read_text(encoding="utf-8").splitlines() if line]
+    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines() if line]
     if [record["case_id"] for record in records] != [case["id"] for case in data["cases"]]:
         raise ValueError("trace case order differs from frozen benchmark")
     by_id = {case["id"]: case for case in data["cases"]}
@@ -499,9 +509,9 @@ def classify_one(source_root: Path, case: dict[str, Any], selected: str) -> dict
     }
 
 
-def check_selections(source_root: Path) -> dict[str, Any]:
+def check_selections(source_root: Path, trace_path: Path, outcome_path: Path) -> dict[str, Any]:
     data = load_data()
-    records = load_trace(data)
+    records = load_trace(data, trace_path)
     responses = {record["case_id"]: record["response"] for record in records}
     misses = []
     for case in data["cases"]:
@@ -532,14 +542,15 @@ def check_selections(source_root: Path) -> dict[str, Any]:
         "source_revision": SOURCE_REVISION,
         "misses": results,
     }
-    OUTCOME_PATH.write_text(json.dumps(artifact, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    outcome_path.parent.mkdir(parents=True, exist_ok=True)
+    outcome_path.write_text(json.dumps(artifact, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
     return artifact
 
 
-def metrics() -> dict[str, Any]:
+def metrics(trace_path: Path, outcome_path: Path, metrics_path: Path) -> dict[str, Any]:
     data = load_data()
-    trace = load_trace(data)
-    outcomes = json.loads(OUTCOME_PATH.read_text(encoding="utf-8"))
+    trace = load_trace(data, trace_path)
+    outcomes = json.loads(outcome_path.read_text(encoding="utf-8"))
     responses = {record["case_id"]: record for record in trace}
     rng = random.Random(SEED)
     rows = []
@@ -604,7 +615,8 @@ def metrics() -> dict[str, Any]:
         "latency_seconds_total": round(sum(record["latency_seconds"] for record in trace), 6),
         "rows": rows,
     }
-    METRICS_PATH.write_text(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.write_text(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
     return result
 
 
@@ -624,25 +636,31 @@ def main() -> None:
     build = sub.add_parser("build-dataset")
     build.add_argument("--source-root", type=Path, required=True)
     sub.add_parser("freeze")
-    sub.add_parser("live")
+    live_parser = sub.add_parser("live")
+    live_parser.add_argument("--results-dir", type=Path, required=True)
     verify = sub.add_parser("verify-states")
     verify.add_argument("--source-root", type=Path, required=True)
     check = sub.add_parser("check-selections")
     check.add_argument("--source-root", type=Path, required=True)
-    sub.add_parser("metrics")
+    check.add_argument("--results-dir", type=Path, required=True)
+    metrics_parser = sub.add_parser("metrics")
+    metrics_parser.add_argument("--results-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build-dataset":
         print(f"wrote {build_dataset(args.source_root)['sample_size']} cases")
     elif args.command == "freeze":
         print(f"froze {len(freeze()['requests'])} requests")
     elif args.command == "live":
-        print(f"wrote {len(live())} live responses")
+        paths = result_paths(args.results_dir)
+        print(f"wrote {len(live(paths['trace']))} live responses")
     elif args.command == "verify-states":
         verify_states(args.source_root)
     elif args.command == "check-selections":
-        print(f"classified {len(check_selections(args.source_root)['misses'])} misses")
+        paths = result_paths(args.results_dir)
+        print(f"classified {len(check_selections(args.source_root, paths['trace'], paths['outcomes'])['misses'])} misses")
     else:
-        print(json.dumps(metrics(), indent=2, ensure_ascii=False, sort_keys=True))
+        paths = result_paths(args.results_dir)
+        print(json.dumps(metrics(paths['trace'], paths['outcomes'], paths['metrics']), indent=2, ensure_ascii=False, sort_keys=True))
 
 
 if __name__ == "__main__":

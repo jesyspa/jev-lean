@@ -2,7 +2,9 @@ import json
 import unittest
 
 from jevlean import MODEL
-from jevlean.next_step import MAX_OPTIONS, load_data, metrics, payload_for, verify_freeze
+from pathlib import Path
+
+from jevlean.next_step import MAX_OPTIONS, load_data, payload_for, result_paths, verify_freeze
 
 
 class NextStepBenchmarkTests(unittest.TestCase):
@@ -40,15 +42,11 @@ class NextStepBenchmarkTests(unittest.TestCase):
     def test_prompt_freeze_reconstructs(self) -> None:
         verify_freeze(self.data)
 
-    def test_final_trace_outcomes_and_metrics_replay(self) -> None:
-        result = metrics()
-        self.assertEqual(result["model"], MODEL)
-        self.assertEqual(result["n"], 100)
-        self.assertEqual(result["exact_match"], 57)
-        self.assertEqual(result["semantic_acceptability"], 58)
-        self.assertEqual(result["miss_classifications"]["invalid"], 12)
-        self.assertEqual(result["miss_classifications"]["valid_unverified_continuation"], 30)
-        self.assertEqual(result["miss_classifications"]["verified_alternative"], 1)
+    def test_result_artifacts_require_an_external_directory(self) -> None:
+        paths = result_paths(Path("/tmp/jev-next-step-results"))
+        self.assertEqual(paths["trace"].name, "next-step-100-jev-1.13.0-trace.jsonl")
+        with self.assertRaises(ValueError):
+            result_paths(Path("artifacts"))
 
 
 if __name__ == "__main__":
