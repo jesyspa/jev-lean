@@ -7,6 +7,8 @@ Lean/Mathlib environment used to verify candidate actions.
 
 import Aesop
 import Mathlib.Tactic.TryThis
+import Std.Internal.Async.TCP
+import Std.Internal.Async.Timer
 
 namespace JevLean
 
@@ -36,7 +38,7 @@ structure Config where
   maxNodes : Nat := 64
   maxHeartbeats : Nat := 256
   maxJevCalls : Nat := 16
-  maxWallMs : Nat := 2_000
+  maxWallMs : Nat := 10_000
 
 /-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
 structure RankContext where
@@ -111,7 +113,69 @@ private def applyRanking? (actions : List Action) (indices : List Nat) : Option 
   let ranked := indices.filterMap fun index => actions[index - 1]?
   if ranked.length == actions.length then some ranked else none
 
-/-- Ask the external ranker to order fixed catalogue entries, retaining local order on failure.
+private def brokerAddress : IO Std.Net.SocketAddress := do
+  let port := match (← IO.getEnv "JEV_RANK_BROKER_PORT").bind String.toNat? with
+    | some port => port
+    | none => 8765
+  if port == 0 || port > 65535 then
+    throw <| IO.Error.userError "JEV_RANK_BROKER_PORT must be between 1 and 65535"
+  return .v4 { addr := Std.Net.IPv4Addr.ofParts 127 0 0 1, port := port.toUInt16 }
+
+private def beforeDeadline (operation : Std.Internal.IO.Async.Async α) (deadline : Nat) : IO α := do
+  let now ← IO.monoMsNow
+  if now >= deadline then
+    throw <| IO.Error.userError "rank broker request deadline exceeded"
+  let delay := Std.Time.Millisecond.Offset.ofNat (deadline - now)
+  let result ← Std.Internal.IO.Async.Async.race (some <$> operation)
+    (Std.Internal.IO.Async.sleep delay *> pure none) |>.block
+  let some result := result | throw <| IO.Error.userError "rank broker request deadline exceeded"
+  return result
+
+private partial def receiveBrokerFrame (socket : Std.Internal.IO.Async.TCP.Socket.Client)
+    (deadline : Nat) (received : ByteArray := ByteArray.empty) : IO String := do
+  if received.size > 1_000_000 then
+    throw <| IO.Error.userError "rank broker response exceeds 1000000 bytes"
+  let some chunk ← beforeDeadline (socket.recv? 65536) deadline |
+    throw <| IO.Error.userError "rank broker closed the response"
+  let received := received ++ chunk
+  if received.toList.contains '\n'.toUInt8 then
+    let some text := String.fromUTF8? received | throw <| IO.Error.userError "rank broker response is not UTF-8"
+    return (text.takeWhile (· != '\n')).toString
+  receiveBrokerFrame socket deadline received
+
+private def brokerRanking (request : Json) (deadline : Nat) : IO (List Nat) := do
+  let socket ← Std.Internal.IO.Async.TCP.Socket.Client.mk
+  beforeDeadline (socket.connect (← brokerAddress)) deadline
+  beforeDeadline (socket.send ((Json.mkObj [
+    ("request", request), ("deadline_ms", Json.num (deadline - (← IO.monoMsNow)))
+  ]).compress.toUTF8 ++ "\n".toUTF8)) deadline
+  let response ← receiveBrokerFrame socket deadline
+  let json ← match Json.parse response with
+    | .ok json => pure json
+    | .error error => throw <| IO.Error.userError s!"rank broker response is invalid JSON: {error}"
+  let object ← match json.getObj? with
+    | .ok object => pure object
+    | .error error => throw <| IO.Error.userError s!"rank broker response is not an object: {error}"
+  let some okJson := object.get? "ok" | throw <| IO.Error.userError "rank broker response has no ok field"
+  let ok ← match okJson.getBool? with
+    | .ok ok => pure ok
+    | .error error => throw <| IO.Error.userError s!"rank broker response has invalid ok field: {error}"
+  unless ok do
+    let error := ((object.get? "error").bind fun value => value.getStr?.toOption).getD "unknown error"
+    throw <| IO.Error.userError s!"rank broker rejected request: {error}"
+  let some rankingJson := object.get? "ranking" | throw <| IO.Error.userError "rank broker response has no ranking field"
+  let ranking ← match rankingJson.getArr? with
+    | .ok ranking => pure ranking
+    | .error error => throw <| IO.Error.userError s!"rank broker response has invalid ranking field: {error}"
+  ranking.toList.mapM fun identifier => do
+    let identifier ← match identifier.getStr? with
+      | .ok identifier => pure identifier
+      | .error error => throw <| IO.Error.userError s!"rank broker returned non-string identifier: {error}"
+    let some index := if identifier.startsWith "A" then (identifier.drop 1).toNat? else none |
+      throw <| IO.Error.userError "rank broker returned invalid action identifier"
+    return index
+
+/-- Ask the persistent localhost rank broker to order fixed catalogue entries.
 Successful rankings are cached for the lifetime of the Lean process so incremental re-elaboration
 of an unchanged proof state does not repeat the external call. -/
 def rank (context : RankContext) (actions : List Action) : TacticM (List Action) := do
@@ -127,20 +191,15 @@ def rank (context : RankContext) (actions : List Action) : TacticM (List Action)
   if let some indices := (← rankCache.get).get? requestText then
     if let some ranked := applyRanking? actions indices then
       return ranked
-  try
-    let output ← IO.Process.output {
-      cmd := "python3"
-      args := #["-m", "jevlean.rank", "--plain", "--timeout-ms", toString context.remainingWallMs]
-    } (some requestText)
-    if output.exitCode != 0 then return actions
-    let indices := output.stdout.splitOn "\n" |>.filterMap fun line =>
-      if line.startsWith "A" then (line.drop 1).toNat? else none
-    let some ranked := applyRanking? actions indices | return actions
-    rankCache.modify fun cache =>
-      let cache := if cache.size >= 1024 then {} else cache
-      cache.insert requestText indices
-    return ranked
-  catch _ => return actions
+  let deadline ← IO.monoMsNow.map (· + context.remainingWallMs)
+  let indices ← try brokerRanking request deadline catch error =>
+    throwError "jev? rank broker is unavailable or failed: {error.toMessageData}"
+  let some ranked := applyRanking? actions indices |
+    throwError "jev? rank broker returned an invalid action ordering"
+  rankCache.modify fun cache =>
+    let cache := if cache.size >= 1024 then {} else cache
+    cache.insert requestText indices
+  return ranked
 
 /-- Capture the current tactic state as the root of a search. -/
 def initialNode : TacticM Node := do

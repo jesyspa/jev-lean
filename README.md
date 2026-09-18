@@ -2,9 +2,17 @@
 
 Experiments on Jev-guided Lean proof search. Lean generates or executes concrete actions and remains the sole correctness oracle; Jev is evaluated as a ranker of promising proof steps.
 
-`jev?` is a deterministic FIFO bounded Lean-native successor search. Each frontier node retains a restorable tactic state, ordered goals, replayable path, depth, and cost. Expansion applies `intro`, `constructor`, `left`/`right`, suitable-hypothesis `cases`, suitable-local `induction`, local `exact`/`apply`, and bounded closing automation to the first goal while preserving sibling order. The external `python3 -m jevlean.rank` command ranks concrete actions using the focused goal, pending sibling goals, and path context. `jev?` requires a nonempty `TYPESAFE_API_KEY`; invalid responses and exhausted Jev-call budgets use catalogue order. Successful rankings are cached in the Lean process, so incremental re-elaboration of the same state reuses them. `aesop` remains a normal rankable candidate. A closing path is replayed and emitted as raw ordinary tactic source through `Try this`.
+`jev?` is a deterministic FIFO bounded Lean-native successor search. Each frontier node retains a restorable tactic state, ordered goals, replayable path, depth, and cost. Expansion applies `intro`, `constructor`, `left`/`right`, suitable-hypothesis `cases`, suitable-local `induction`, local `exact`/`apply`, and bounded closing automation to the first goal while preserving sibling order. A persistent localhost Python broker ranks concrete actions using the focused goal, pending sibling goals, and path context; it keeps one HTTPS connection to TypeSafe where the server permits reuse. `jev?` requires a nonempty `TYPESAFE_API_KEY` and a reachable broker; either missing prerequisite is an explicit tactic error. Broker responses are bounded JSON frames and action order is validated before use. Successful rankings are cached in the Lean process, so incremental re-elaboration of the same state reuses them. `aesop` remains a normal rankable candidate. A closing path is replayed and emitted as raw ordinary tactic source through `Try this`.
 
-The default practical ledger is depth 6, path cost 6, 64 visited frontier nodes, 256 attempted catalogue transitions, 16 Jev calls, and 2 seconds of wall time. The remaining wall allowance becomes a hard deadline for each ranker subprocess; wall time is also checked between Lean transitions. Lean tactic execution remains subject to Lean's enclosing heartbeat limit. Local suitability is deliberately shallow (`cases` on propositions and `induction` on non-proposition locals), and the catalogue has no premise retrieval, rewriting, generalization, or generated helper proofs.
+Start the broker before invoking `jev?`:
+
+```bash
+TYPESAFE_API_KEY=... python3 -m jevlean.rank_broker
+```
+
+It listens only on `127.0.0.1:8765`; set `JEV_RANK_BROKER_PORT` in Lean's environment and pass the same `--port` to use another port. The broker exits on startup without a key and is intentionally not started or stopped by Lean, so its credentialed lifecycle is explicit. Each connection carries exactly one newline-delimited JSON request and is closed after one response; both sides enforce a 1 MB frame limit. The remaining theorem wall allowance is sent as the rank deadline, and Lean also abandons a broker operation at that deadline.
+
+The default practical ledger is depth 6, path cost 6, 64 visited frontier nodes, 256 attempted catalogue transitions, 16 Jev calls, and 10 seconds of wall time. Wall time is checked between Lean transitions and Lean tactic execution remains subject to Lean's enclosing heartbeat limit. Raising this deadline accommodates remote ranking latency; it does not solve search scheduling, branching, retrieval, rewriting, generalization, or generated helper proofs. Local suitability is deliberately shallow (`cases` on propositions and `induction` on non-proposition locals), and the catalogue has no premise retrieval, rewriting, generalization, or generated helper proofs.
 
 ## Results so far
 
@@ -61,6 +69,7 @@ lean-cache build --wait .
 python3 -m unittest discover -s tests -v
 python3 -m jevlean.progress metrics
 python3 -m jevlean.rank < rank-request.json
+TYPESAFE_API_KEY=... python3 -m jevlean.rank_broker
 python3 -m jevlean.next_step metrics
 ```
 

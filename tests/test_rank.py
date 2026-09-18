@@ -1,12 +1,15 @@
 import json
 import os
+import socket
 import subprocess
 import sys
+import threading
 import unittest
 from unittest.mock import patch
 
 from jevlean import MODEL
 from jevlean.rank import payload, rank, ranking_from_response
+from jevlean.rank_broker import BrokerServer, RankBroker, validate_frame
 
 
 REQUEST = {
@@ -116,6 +119,34 @@ class RankTests(unittest.TestCase):
             capture_output=True,
         )
         self.assertNotEqual(result.returncode, 0)
+
+
+class BrokerTests(unittest.TestCase):
+    def test_frame_validation_rejects_extra_fields_and_bad_deadlines(self) -> None:
+        with self.assertRaises(ValueError):
+            validate_frame({"request": REQUEST, "deadline_ms": 0})
+        with self.assertRaises(ValueError):
+            validate_frame({"request": REQUEST, "deadline_ms": 10, "extra": True})
+
+    def test_server_uses_one_bounded_json_frame(self) -> None:
+        client = unittest.mock.Mock()
+        client.evaluate.return_value = {
+            "model": MODEL,
+            "answers": {"ranking": {"type": "choice", "choice": "A02", "probabilities": {"A01": 0.1, "A02": 0.9}}},
+        }
+        server = BrokerServer(("127.0.0.1", 0), RankBroker(client))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with socket.create_connection(server.server_address, timeout=1) as connection:
+                connection.sendall(json.dumps({"request": REQUEST, "deadline_ms": 1000}).encode() + b"\n")
+                reply = json.loads(connection.makefile("rb").readline())
+            self.assertEqual(reply, {"ok": True, "ranking": ["A02", "A01"], "source": "jev"})
+            client.evaluate.assert_called_once()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
 
 
 if __name__ == "__main__":
