@@ -8,7 +8,7 @@ env -u TYPESAFE_API_KEY lake env lean JevLeanTests.lean
 TYPESAFE_API_KEY=test JEV_RANK_ORDER=A2,A1 python3 -m jevlean.rank_broker --port 18765 &
 broker_pid=$!
 trap 'kill "$broker_pid" 2>/dev/null || true' EXIT
-TYPESAFE_API_KEY=test JEV_RANK_BROKER_PORT=18765 lake env lean JevLeanBrokerTests.lean
+env -u TYPESAFE_API_KEY JEV_RANK_BROKER_PORT=18765 lake env lean JevLeanBrokerTests.lean
 kill "$broker_pid"
 wait "$broker_pid" 2>/dev/null || true
 trap - EXIT

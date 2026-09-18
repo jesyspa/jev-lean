@@ -310,16 +310,8 @@ def replay (path : List Action) : TacticM Unit := do
   for action in path do
     evalTactic action.tacticSyntax
 
-private def requireApiKey : TacticM Unit := do
-  match ← IO.getEnv "TYPESAFE_API_KEY" with
-  | some key =>
-    unless !key.isEmpty do
-      throwError "jev? requires a nonempty TYPESAFE_API_KEY environment variable"
-  | none => throwError "jev? requires the TYPESAFE_API_KEY environment variable"
-
 /-- Search ordinary locally generated actions and provide a replayable replacement. -/
 elab "jev?" : tactic => withMainContext do
-  requireApiKey
   match ← searchWith {} catalogue rank with
   | none => throwError "jev? found no closing path in its bounded catalogue"
   | some node =>
