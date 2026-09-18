@@ -116,13 +116,8 @@ class HelperBrokerServer(socketserver.ThreadingTCPServer):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
-    args = parser.parse_args()
-    if not 1 <= args.port <= 65535: raise SystemExit("--port must be between 1 and 65535")
-    key = os.environ.get("OPENROUTER_API_KEY", "")
-    if not key: raise SystemExit("jev helper broker requires OPENROUTER_API_KEY")
-    with HelperBrokerServer((DEFAULT_HOST, args.port), HelperBroker(OpenRouterClient(key))) as server:
-        server.serve_forever()
+    """Compatibility entry point; new deployments use the unified model broker."""
+    from .model_broker import main as model_broker_main
+    model_broker_main()
 
 if __name__ == "__main__": main()

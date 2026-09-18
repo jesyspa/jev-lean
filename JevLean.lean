@@ -458,11 +458,13 @@ private def applyRanking? (actions : List Action) (indices : List Nat) : Option 
   if ranked.length == actions.length then some ranked else none
 
 private def brokerAddress : IO Std.Net.SocketAddress := do
-  let port := match (← IO.getEnv "JEV_RANK_BROKER_PORT").bind String.toNat? with
+  let modelPort ← IO.getEnv "JEV_MODEL_BROKER_PORT"
+  let rankPort ← IO.getEnv "JEV_RANK_BROKER_PORT"
+  let port := match (modelPort.orElse fun _ => rankPort).bind String.toNat? with
     | some port => port
     | none => 8765
   if port == 0 || port > 65535 then
-    throw <| IO.Error.userError "JEV_RANK_BROKER_PORT must be between 1 and 65535"
+    throw <| IO.Error.userError "JEV_MODEL_BROKER_PORT must be between 1 and 65535"
   return .v4 { addr := Std.Net.IPv4Addr.ofParts 127 0 0 1, port := port.toUInt16 }
 
 private def beforeDeadline (operation : Std.Internal.IO.Async.Async α) (deadline : Nat) : IO α := do
@@ -482,6 +484,8 @@ private partial def receiveBrokerFrame (socket : Std.Internal.IO.Async.TCP.Socke
   let some chunk ← beforeDeadline (socket.recv? 65536) deadline |
     throw <| IO.Error.userError "rank broker closed the response"
   let received := received ++ chunk
+  if received.size > 1_000_000 then
+    throw <| IO.Error.userError "rank broker response exceeds 1000000 bytes"
   if received.toList.contains '\n'.toUInt8 then
     let some text := String.fromUTF8? received | throw <| IO.Error.userError "rank broker response is not UTF-8"
     return (text.takeWhile (· != '\n')).toString
@@ -491,7 +495,7 @@ private def brokerRanking (request : Json) (deadline : Nat) : IO (List Nat) := d
   let socket ← Std.Internal.IO.Async.TCP.Socket.Client.mk
   beforeDeadline (socket.connect (← brokerAddress)) deadline
   beforeDeadline (socket.send ((Json.mkObj [
-    ("request", request), ("deadline_ms", Json.num (deadline - (← IO.monoMsNow)))
+    ("operation", Json.str "rank"), ("request", request), ("deadline_ms", Json.num (deadline - (← IO.monoMsNow)))
   ]).compress.toUTF8 ++ "\n".toUTF8)) deadline
   let response ← receiveBrokerFrame socket deadline
   let json ← match Json.parse response with
@@ -519,20 +523,14 @@ private def brokerRanking (request : Json) (deadline : Nat) : IO (List Nat) := d
       throw <| IO.Error.userError "rank broker returned invalid action identifier"
     return index
 
-private def helperBrokerAddress : IO Std.Net.SocketAddress := do
-  let port := match (← IO.getEnv "JEV_HELPER_BROKER_PORT").bind String.toNat? with
-    | some port => port | none => 8766
-  if port == 0 || port > 65535 then throw <| IO.Error.userError "JEV_HELPER_BROKER_PORT must be between 1 and 65535"
-  return .v4 { addr := Std.Net.IPv4Addr.ofParts 127 0 0 1, port := port.toUInt16 }
-
 private def providerHelpers (context : RankContext) (maximum timeout : Nat) : TacticM (List (String × String)) := do
   let key := canonicalStateIdentity context
   if let some cached := (← helperCache.get).get? key then return cached
   let deadline ← IO.monoMsNow.map (· + timeout)
-  let request := Json.mkObj [("state", Json.mkObj [("focused_goal", Json.str context.focusedGoal), ("canonical_state", Json.str key)]), ("max_proposals", Json.num maximum), ("deadline_ms", Json.num timeout)]
+  let request := Json.mkObj [("operation", Json.str "helpers"), ("state", Json.mkObj [("focused_goal", Json.str context.focusedGoal), ("canonical_state", Json.str key)]), ("max_proposals", Json.num maximum), ("deadline_ms", Json.num timeout)]
   let result ← try
     let socket ← Std.Internal.IO.Async.TCP.Socket.Client.mk
-    beforeDeadline (socket.connect (← helperBrokerAddress)) deadline
+    beforeDeadline (socket.connect (← brokerAddress)) deadline
     beforeDeadline (socket.send (request.compress.toUTF8 ++ "\n".toUTF8)) deadline
     let text ← receiveBrokerFrame socket deadline
     let json ← match Json.parse text with | .ok json => pure json | .error error => throwError "invalid helper response: {error}"
@@ -859,8 +857,6 @@ private def metricsJson (metrics : SearchMetrics) : Json := Json.mkObj [
 
 private def searchConfig : TacticM Config := do
   let helpersEnabled := (← IO.getEnv "JEV_LLM_HELPERS") == some "1"
-  if helpersEnabled && (← IO.getEnv "OPENROUTER_API_KEY").getD "" == "" then
-    logWarning "jev?: LLM helpers are enabled but OPENROUTER_API_KEY is missing; continuing without helpers"
   return { enableLlmHelpers := helpersEnabled }
 
 /-- Search ordinary locally generated actions and provide a replayable replacement. -/
