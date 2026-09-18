@@ -3,12 +3,33 @@ import JevLean
 open Lean Elab Tactic Meta
 open JevLean.Search
 
-private def controlledActions : ActionSource := do
-  return (← catalogue).filter fun action =>
+private def controlledActions : ActionSource := fun _ => do
+  return (← catalogue { maxRetrievedNames := 0 }).filter fun action =>
     action.text.startsWith "intro " || action.text == "constructor" ||
       action.text.startsWith "exact " || action.text.startsWith "apply "
 
 private def identityRanker : ActionRanker := fun _ actions => pure actions
+
+private def retrievedActions : ActionSource := fun config =>
+  return (← globalActions config.maxRetrievedNames).filter fun action =>
+    action.text.startsWith "exact " || action.text.startsWith "apply "
+
+private def retrievalThenLocalActions : ActionSource := fun config => do
+  let retrieved ← globalActions config.maxRetrievedNames
+  let h := mkIdent `h
+  return retrieved.filter (·.text == "apply sipserAcceptance_from") ++ [
+    { tacticSyntax := ← `(tactic| exact $h), text := "exact h" }
+  ]
+
+def SipserAcceptance (n : Nat) : Prop := n = n
+
+lemma sipserAcceptance_global (n : Nat) : SipserAcceptance n := rfl
+
+lemma sipserAcceptance_zero : SipserAcceptance 0 := rfl
+
+lemma sipserAcceptance_from (n : Nat) (h : n = 0) : SipserAcceptance n := by
+  subst n
+  rfl
 
 private def aesopFirst : ActionRanker := fun _ actions =>
   pure <| actions.mergeSort fun left right =>
@@ -16,12 +37,12 @@ private def aesopFirst : ActionRanker := fun _ actions =>
 
 private def reverseRanker : ActionRanker := fun _ actions => pure actions.reverse
 
-private def disjunctionActions : ActionSource := do
-  return (← catalogue).filter fun action =>
+private def disjunctionActions : ActionSource := fun _ => do
+  return (← catalogue { maxRetrievedNames := 0 }).filter fun action =>
     action.text.startsWith "intro " || action.text.startsWith "cases " ||
       action.text == "left" || action.text == "right" || action.text == "assumption"
 
-private def inductionActions : ActionSource := do
+private def inductionActions : ActionSource := fun _ => do
   let xs := mkIdent `xs
   return [
     { tacticSyntax := ← `(tactic| induction $xs:ident), text := "induction xs" },
@@ -29,7 +50,7 @@ private def inductionActions : ActionSource := do
     { tacticSyntax := ← `(tactic| omega), text := "omega" }
   ]
 
-private def orderedSiblingActions : ActionSource := do
+private def orderedSiblingActions : ActionSource := fun _ => do
   let hP := mkIdent `hP
   let hQ := mkIdent `hQ
   return [
@@ -61,6 +82,37 @@ elab "jev_test_apply_path" : tactic => withMainContext do
     throwError "unexpected apply path: {texts}"
   replay node.path
 
+elab "jev_test_global_retrieval" : tactic => withMainContext do
+  let config := { maxRetrievedNames := 24 }
+  let actions ← retrievedActions config
+  let repeated ← retrievedActions config
+  unless actions.map (·.text) == repeated.map (·.text) && actions.length <= 2 * config.maxRetrievedNames do
+    throwError "global retrieval exceeded its bound or changed order"
+  let root ← initialNode
+  unless (← expand root actions).length == actions.length do
+    throwError "global retrieval admitted a candidate that does not elaborate in the focused state"
+  unless actions.any fun action => action.text == "exact sipserAcceptance_zero" do
+    throwError "type-correct global exact candidate was not retrieved"
+  unless actions.all fun action => action.text != "exact definitely_missing_lemma" do
+    throwError "retrieval invented an unavailable name"
+  let some node ← searchWith { maxDepth := 1, maxCost := 1, maxRetrievedNames := 24 }
+      retrievedActions identityRanker
+    | throwError "retrieval search found no path"
+  unless node.path.map (·.text) == ["exact sipserAcceptance_zero"] do
+    throwError "retrieval did not select the global exact candidate"
+  replay node.path
+
+elab "jev_test_global_apply_retrieval" : tactic => withMainContext do
+  let actions ← retrievedActions { maxRetrievedNames := 24 }
+  unless actions.any fun action => action.text == "apply sipserAcceptance_from" do
+    throwError "type-correct global apply candidate was not retrieved"
+  let some node ← searchWith { maxDepth := 2, maxCost := 2, maxRetrievedNames := 24 }
+      retrievalThenLocalActions identityRanker
+    | throwError "retrieval apply search found no path"
+  unless node.path.map (·.text) == ["apply sipserAcceptance_from", "exact h"] do
+    throwError "retrieval did not retain a type-correct global apply candidate"
+  replay node.path
+
 elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
   let some node ← searchWith { maxDepth := 2, maxCost := 2 } catalogue aesopFirst
     | throwError "aesop-first search found no path"
@@ -78,7 +130,7 @@ elab "jev_test_custom_disjunction" : tactic => withMainContext do
 
 elab "jev_test_nonclosing_retained" : tactic => withMainContext do
   let root ← initialNode
-  let successors ← expand root (← controlledActions)
+  let successors ← expand root (← controlledActions {})
   unless successors.any fun node => node.path.map (·.text) == ["intro jev_h"] && !node.goals.isEmpty do
     throwError "a non-closing intro transition was discarded"
   evalTactic (← `(tactic| intro h; exact h))
@@ -172,6 +224,14 @@ example (xs : List Nat) : JevLean.tally xs = xs.length := by
 /-- Locally generated apply can open a successor that a later exact closes. -/
 example (P Q : Prop) (h : P → Q) (hp : P) : Q := by
   jev_test_apply_path
+
+/-- A Sipser-shaped target is solved by a named global lemma absent from the local catalogue. -/
+example : SipserAcceptance 0 := by
+  jev_test_global_retrieval
+
+/-- Retrieved global applications open ordinary local proof obligations. -/
+example (n : Nat) (h : n = 0) : SipserAcceptance n := by
+  jev_test_global_apply_retrieval
 
 /-- Tests can force aesop first and do not assume a structural action wins ranking. -/
 example (P : Prop) : P → P := by

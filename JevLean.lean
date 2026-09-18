@@ -39,6 +39,7 @@ structure Config where
   maxHeartbeats : Nat := 256
   maxJevCalls : Nat := 16
   maxWallMs : Nat := 10_000
+  maxRetrievedNames : Nat := 24
 
 /-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
 structure RankContext where
@@ -48,7 +49,7 @@ structure RankContext where
   remainingWallMs : Nat := 0
 
 /-- A seam used by tests and alternative bounded action generators. -/
-abbrev ActionSource := TacticM (List Action)
+abbrev ActionSource := Config → TacticM (List Action)
 
 /-- A seam used to replace the external ranker while retaining the same scheduler. -/
 abbrev ActionRanker := RankContext → List Action → TacticM (List Action)
@@ -104,9 +105,66 @@ private def localActions : TacticM (List Action) := do
     else
       pure actions
 
+private partial def constantsIn (expr : Expr) (constants : List Name := []) : List Name :=
+  match expr with
+  | .const name _ => if constants.contains name then constants else name :: constants
+  | .app function argument => constantsIn argument (constantsIn function constants)
+  | .lam _ type body _ | .forallE _ type body _ => constantsIn body (constantsIn type constants)
+  | .letE _ type value body _ => constantsIn body (constantsIn value (constantsIn type constants))
+  | .mdata _ body | .proj _ _ body => constantsIn body constants
+  | _ => constants
+
+private partial def forallBody : Expr → Expr
+  | .forallE _ _ body _ => forallBody body
+  | expr => expr
+
+private def retrievalScore (query : List Name) (type : Expr) : Nat :=
+  (constantsIn (forallBody type)).countP query.contains
+
+private def candidateWorks (action : Action) : TacticM Bool := do
+  let goals ← getGoals
+  let state ← saveState
+  try
+    withMainContext do
+      Term.withoutErrToSorry <| withoutRecover do evalTactic action.tacticSyntax
+    return true
+  catch _ => return false
+  finally
+    state.restore
+    setGoals goals
+
+/-- Retrieve globally named declarations related to the focused goal, then retain only candidates
+that Lean can elaborate and execute in the current tactic state. -/
+def globalActions (maxNames : Nat) : TacticM (List Action) := do
+  let goal ← getMainGoal
+  let target ← goal.getType
+  let lctx ← getLCtx
+  let query := lctx.foldl (init := constantsIn target) fun names decl =>
+    constantsIn decl.type names
+  let names ← (← getEnv).constants.map₂.foldlM (init := []) fun names name _ => do
+    let some info := (← getEnv).find? name | return names
+    let score := retrievalScore query info.type
+    if score == 0 then return names
+    return (score, name) :: names
+  let names := names.mergeSort fun left right =>
+    left.1 > right.1 || left.1 == right.1 && left.2.toString < right.2.toString
+  let mut actions := []
+  for (_, name) in names.take maxNames do
+    let ident := mkIdent name
+    let exactAction : Action := {
+      tacticSyntax := ← `(tactic| exact $ident), text := s!"exact {name}"
+    }
+    if ← candidateWorks exactAction then actions := actions.concat exactAction
+    let applyAction : Action := {
+      tacticSyntax := ← `(tactic| apply $ident), text := s!"apply {name}"
+    }
+    if ← candidateWorks applyAction then actions := actions.concat applyAction
+  return actions
+
 /-- Build the finite, syntax-safe action catalogue for the current active goal. -/
-def catalogue : TacticM (List Action) := do
-  return (← structuralActions) ++ (← localActions) ++ (← closingActions)
+def catalogue (config : Config) : TacticM (List Action) := do
+  return (← structuralActions) ++ (← localActions) ++
+    (← globalActions config.maxRetrievedNames) ++ (← closingActions)
 
 private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
 
@@ -287,7 +345,7 @@ def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker)
       else
         node.restore
         let (actions, calls) ← withMainContext do
-          let actions ← source
+          let actions ← source config
           if calls >= config.maxJevCalls then
             pure (actions, calls)
           else
