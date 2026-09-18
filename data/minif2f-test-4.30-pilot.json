@@ -1,0 +1,1393 @@
+{
+  "accepted_targets": [
+    {
+      "id": "mf2f-00bcd83fb3e56bef",
+      "name": "mathd_numbertheory_483",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_483 (a : \u2115 \u2192 \u2115) (h\u2080 : a 1 = 1) (h\u2081 : a 2 = 1)\n    (h\u2082 : \u2200 n, a (n + 2) = a (n + 1) + a n) : a 100 % 4 = 3 :=",
+      "statement_sha256": "0918719a61598e60c2e9d304033c1b8f2a7c169a1210a2a314c171e9cbd31830"
+    },
+    {
+      "id": "mf2f-01ee3308c2500f33",
+      "name": "induction_1pxpownlt1pnx",
+      "port": "accepted",
+      "statement": "theorem induction_1pxpownlt1pnx (x : \u211d) (n : \u2115) (h\u2080 : -1 < x) (h\u2081 : 0 < n) :\n    1 + \u2191n * x \u2264 (1 + x) ^ (n : \u2115) :=",
+      "statement_sha256": "446d6647c3ae351137d4f11f3112391c1955f3cd91152af9f1a7efb310d20280"
+    },
+    {
+      "id": "mf2f-0275b02c2fc5315e",
+      "name": "mathd_algebra_158",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_158 (a : \u2115) (h\u2080 : Even a)\n    (h\u2081 : \u2191(\u2211 k \u2208 Finset.range 8, (2 * k + 1)) - \u2191(\u2211 k \u2208 Finset.range 5, (a + 2 * k)) = (4 : \u2124)) :\n    a = 8 :=",
+      "statement_sha256": "17353aec306e1941f54fb95d62720fc9c5c094c0de43423752c3e4815bc9305c"
+    },
+    {
+      "id": "mf2f-030385fe3cbbabab",
+      "name": "amc12_2001_p5",
+      "port": "accepted",
+      "statement": "theorem amc12_2001_p5 :\n    Finset.prod (Finset.filter (fun x => \u00acEven x) (Finset.range 10000)) (id : \u2115 \u2192 \u2115) =\n      10000! / (2 ^ 5000 * 5000!) :=",
+      "statement_sha256": "3570828b4c6c30db18d357c74da5f1c8ad0ec1ab79768d2a4b473a8c39521776"
+    },
+    {
+      "id": "mf2f-0522a3522e097ba3",
+      "name": "mathd_algebra_148",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_148 (c : \u211d) (f : \u211d \u2192 \u211d) (h\u2080 : \u2200 x, f x = c * x ^ 3 - 9 * x + 3)\n    (h\u2081 : f 2 = 9) : c = 3 :=",
+      "statement_sha256": "b16bab86e8b2876b3e7e31999658a648d1ed00eaad7f4e494d8f4cc415ff519c"
+    },
+    {
+      "id": "mf2f-057bf0ea540d5156",
+      "name": "mathd_algebra_342",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_342 (a d : \u211d) (h\u2080 : \u2211 k \u2208 Finset.range 5, (a + k * d) = 70)\n    (h\u2081 : \u2211 k \u2208 Finset.range 10, (a + k * d) = 210) : a = 42 / 5 :=",
+      "statement_sha256": "a12ad8de5236d048e98859e9a7c939462d013f3667254af865bcb372043e9032"
+    },
+    {
+      "id": "mf2f-064038f906574e4e",
+      "name": "numbertheory_3pow2pownm1mod2pownp3eq2pownp2",
+      "port": "accepted",
+      "statement": "theorem numbertheory_3pow2pownm1mod2pownp3eq2pownp2 (n : \u2115) (h\u2080 : 0 < n) :\n    (3 ^ 2 ^ n - 1) % 2 ^ (n + 3) = 2 ^ (n + 2) :=",
+      "statement_sha256": "04afbe61687d1900db4c07bafac97a946f8963ffd8f9e450bf1859f87f427bf1"
+    },
+    {
+      "id": "mf2f-07134e069c1c29eb",
+      "name": "amc12b_2021_p18",
+      "port": "accepted",
+      "statement": "theorem amc12b_2021_p18 (z : \u2102)\n    (h\u2080 : 12 * Complex.normSq z = 2 * Complex.normSq (z + 2) + Complex.normSq (z ^ 2 + 1) + 31) :\n    z + 6 / z = -2 :=",
+      "statement_sha256": "7abfcc49943d6f2229fa0f1256da163cc0cfd8afe9221e1175ee8ed14969a41c"
+    },
+    {
+      "id": "mf2f-074f3a00c734d732",
+      "name": "algebra_apbon2pownleqapownpbpowon2",
+      "port": "accepted",
+      "statement": "theorem algebra_apbon2pownleqapownpbpowon2 (a b : \u211d) (n : \u2115) (h\u2080 : 0 < a \u2227 0 < b) (h\u2081 : 0 < n) :\n    ((a + b) / 2) ^ n \u2264 (a ^ n + b ^ n) / 2 :=",
+      "statement_sha256": "4500e0289ef56c8581e325b6dfd8e4499515edd143565c99d33143e73d7dfab3"
+    },
+    {
+      "id": "mf2f-0811fb2fad142e0e",
+      "name": "mathd_numbertheory_185",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_185 (n : \u2115) (h\u2080 : n % 5 = 3) : 2 * n % 5 = 1 :=",
+      "statement_sha256": "61afccd4f55d6a65274e7d514767c1950a2b9f752dc5e4688a6b3016566b8b73"
+    },
+    {
+      "id": "mf2f-08a40c5c9a7e760d",
+      "name": "mathd_algebra_392",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_392 (n : \u2115) (h\u2080 : Even n)\n    (h\u2081 : (\u2191n - 2) ^ 2 + \u2191n ^ 2 + (\u2191n + 2) ^ 2 = (12296 : \u2124)) :\n    (\u2191n - 2) * \u2191n * (\u2191n + 2) / 8 = (32736 : \u2124) :=",
+      "statement_sha256": "10d1967c43840bf6ed3ac8791e0f94836f8becd4e0e6f95052e974b7f7be2cda"
+    },
+    {
+      "id": "mf2f-0a9329d0dc167012",
+      "name": "imo_1968_p5_1",
+      "port": "accepted",
+      "statement": "theorem imo_1968_p5_1 (a : \u211d) (f : \u211d \u2192 \u211d) (h\u2080 : 0 < a)\n    (h\u2081 : \u2200 x, f (x + a) = 1 / 2 + Real.sqrt (f x - f x ^ 2)) : \u2203 b > 0, \u2200 x, f (x + b) = f x :=",
+      "statement_sha256": "7486556106b78c2631d57e597e4ad8e23f6761b9185434909a5ca3bd3ad3dd66"
+    },
+    {
+      "id": "mf2f-0a939573119a61e0",
+      "name": "mathd_numbertheory_552",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_552 (f g h : \u2115+ \u2192 \u2115) (h\u2080 : \u2200 x, f x = 12 * x + 7)\n    (h\u2081 : \u2200 x, g x = 5 * x + 2) (h\u2082 : \u2200 x, h x = Nat.gcd (f x) (g x)) (h\u2083 : Fintype (Set.range h)) :\n    \u2211 k \u2208 (Set.range h).toFinset, k = 12 :=",
+      "statement_sha256": "74237e645dafe47f1d519171211a7f4f4b4b40d66399a316717758f9749c36ea"
+    },
+    {
+      "id": "mf2f-0bb0ff6d89b5e382",
+      "name": "mathd_numbertheory_237",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_237 : (\u2211 k \u2208 Finset.range 101, k) % 6 = 4 :=",
+      "statement_sha256": "b2f50ed8f28529eec642102859cf7118c6dbb5e6d7e10695f569e9d2ed4b3412"
+    },
+    {
+      "id": "mf2f-0d69215d03651fd5",
+      "name": "algebra_sqineq_at2malt1",
+      "port": "accepted",
+      "statement": "theorem algebra_sqineq_at2malt1 (a : \u211d) : a * (2 - a) \u2264 1 :=",
+      "statement_sha256": "6d0060cc5904c1c0e0dbac82b671e3573a97568fd89444515576eb79ad15b717"
+    },
+    {
+      "id": "mf2f-0e757c23f6d424d1",
+      "name": "imo_1959_p1",
+      "port": "accepted",
+      "statement": "theorem imo_1959_p1 (n : \u2115) (h\u2080 : 0 < n) : Nat.gcd (21 * n + 4) (14 * n + 3) = 1 :=",
+      "statement_sha256": "9de350048be9125005b5d01e2d64f963b78a2d79738b8587cbd84b4726f5e56d"
+    },
+    {
+      "id": "mf2f-0f04eacb4d71165b",
+      "name": "induction_nfactltnexpnm1ngt3",
+      "port": "accepted",
+      "statement": "theorem induction_nfactltnexpnm1ngt3 (n : \u2115) (h\u2080 : 3 \u2264 n) : n ! < n ^ (n - 1) :=",
+      "statement_sha256": "10a797dfe1c911bd4480a25179f5cb023c927c0b49b8b3c2dc6f7b2a77490e7d"
+    },
+    {
+      "id": "mf2f-0f2d213fe8a05d0c",
+      "name": "aime_1984_p7",
+      "port": "accepted",
+      "statement": "theorem aime_1984_p7 (f : \u2124 \u2192 \u2124) (h\u2080 : \u2200 n, 1000 \u2264 n \u2192 f n = n - 3)\n    (h\u2081 : \u2200 n, n < 1000 \u2192 f n = f (f (n + 5))) : f 84 = 997 :=",
+      "statement_sha256": "541225067b8d25fdd4b26f31037e709a2e939e45f4e1dbbb2360166ea918292c"
+    },
+    {
+      "id": "mf2f-0fbef7b8b864f83d",
+      "name": "amc12a_2021_p12",
+      "port": "accepted",
+      "statement": "theorem amc12a_2021_p12 (a b c d : \u211d) (f : \u2102 \u2192 \u2102)\n    (h\u2080 : \u2200 z, f z = z ^ 6 - 10 * z ^ 5 + a * z ^ 4 + b * z ^ 3 + c * z ^ 2 + d * z + 16)\n    (h\u2081 : \u2200 z, f z = 0 \u2192 z.im = 0 \u2227 0 < z.re \u2227 \u2191(Int.floor z.re) = z.re) : b = -88 :=",
+      "statement_sha256": "ed04f52b08d3830f1b14926e459ba0c55cab1ae8c8ae1e5e394f1164b2fed3ea"
+    },
+    {
+      "id": "mf2f-10934c5c446bbad6",
+      "name": "mathd_algebra_107",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_107 (x y : \u211d) (h\u2080 : x ^ 2 + 8 * x + y ^ 2 - 6 * y = 0) :\n    (x + 4) ^ 2 + (y - 3) ^ 2 = 5 ^ 2 :=",
+      "statement_sha256": "121c7bb1c09ec8a51606dc37aa5caf0cef6bf4512252bc1aa38549513c36d2ab"
+    },
+    {
+      "id": "mf2f-10a8f135f7ac38ce",
+      "name": "mathd_algebra_302",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_302 : (Complex.I / 2) ^ 2 = -(1 / 4) :=",
+      "statement_sha256": "d9f530dc301c2bf12df8148170e63fbff55d58acf88ebea3b621b1a2a23a52e4"
+    },
+    {
+      "id": "mf2f-114db04d1b49995a",
+      "name": "imo_1969_p2",
+      "port": "accepted",
+      "statement": "theorem imo_1969_p2 (m n : \u211d) (k : \u2115) (a : \u2115 \u2192 \u211d) (y : \u211d \u2192 \u211d) (h\u2080 : 0 < k)\n    (h\u2081 : \u2200 x, y x = \u2211 i \u2208 Finset.range k, Real.cos (a i + x) / 2 ^ i) (h\u2082 : y m = 0)\n    (h\u2083 : y n = 0) : \u2203 t : \u2124, m - n = t * \u03c0 :=",
+      "statement_sha256": "7897bb75193d1eb7f6d210a247fd8e7cf548799e69ee26558cfd0ac19b595c2d"
+    },
+    {
+      "id": "mf2f-11d0d698f8e6f5d2",
+      "name": "mathd_algebra_137",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_137 (x : \u2115) (h\u2080 : \u2191x + (4 : \u211d) / (100 : \u211d) * \u2191x = 598) : x = 575 :=",
+      "statement_sha256": "7d808137f16b01dde973a527f9ee37ce5adf08451a7c53435161c340a502a253"
+    },
+    {
+      "id": "mf2f-1608968ab1685129",
+      "name": "aime_1990_p4",
+      "port": "accepted",
+      "statement": "theorem aime_1990_p4 (x : \u211d) (h\u2080 : 0 < x) (h\u2081 : x ^ 2 - 10 * x - 29 \u2260 0)\n    (h\u2082 : x ^ 2 - 10 * x - 45 \u2260 0) (h\u2083 : x ^ 2 - 10 * x - 69 \u2260 0)\n    (h\u2084 : 1 / (x ^ 2 - 10 * x - 29) + 1 / (x ^ 2 - 10 * x - 45) - 2 / (x ^ 2 - 10 * x - 69) = 0) :\n    x = 13 :=",
+      "statement_sha256": "1b279302cfbce3fbf54c1c770626e8e938339ed4d86373b2b064b0ce2a6cbdf1"
+    },
+    {
+      "id": "mf2f-178fb7d990c65f95",
+      "name": "mathd_numbertheory_34",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_34 (x : \u2115) (h\u2080 : x < 100) (h\u2081 : x * 9 % 100 = 1) : x = 89 :=",
+      "statement_sha256": "6bab8d7af0a32478462a3ab807288714e6aa32d7241f8b78d97a6b536b9f6e74"
+    },
+    {
+      "id": "mf2f-1a7c023bfd080b5b",
+      "name": "mathd_numbertheory_207",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_207 : 8 * 9 ^ 2 + 5 * 9 + 2 = 695 :=",
+      "statement_sha256": "51889ae9a6f8ba5516a9952910414a1e2751ba4410498d3d295bfa079f90b8cc"
+    },
+    {
+      "id": "mf2f-1e03c215e31bf849",
+      "name": "mathd_numbertheory_212",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_212 : 16 ^ 17 * 17 ^ 18 * 18 ^ 19 % 10 = 8 :=",
+      "statement_sha256": "ff5e533a1966a2eff44dfd1d4cfeddc624b0e7e3637ce16ceb9fc7a327a178e3"
+    },
+    {
+      "id": "mf2f-1e95a8de7898e5a5",
+      "name": "mathd_algebra_208",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_208 : Real.sqrt 1000000 - 1000000 ^ ((1 : \u211d) / 3) = 900 :=",
+      "statement_sha256": "ee92f9c4443dd388777589944693c889e57e0b6f66d07f9f6b1e7bb0d543141b"
+    },
+    {
+      "id": "mf2f-1ec3bd65e7994191",
+      "name": "numbertheory_exk2powkeqapb2mulbpa2_aeq1",
+      "port": "accepted",
+      "statement": "theorem numbertheory_exk2powkeqapb2mulbpa2_aeq1 (a b : \u2115) (h\u2080 : 0 < a \u2227 0 < b)\n    (h\u2081 : \u2203 k > 0, 2 ^ k = (a + b ^ 2) * (b + a ^ 2)) : a = 1 :=",
+      "statement_sha256": "950189ffd1602db0cfdab50228929994f7842c948a1e68bc77bb6e39e1640d3f"
+    },
+    {
+      "id": "mf2f-1f119276790a7883",
+      "name": "mathd_numbertheory_100",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_100 (n : \u2115) (h\u2080 : 0 < n) (h\u2081 : Nat.gcd n 40 = 10)\n    (h\u2082 : Nat.lcm n 40 = 280) : n = 70 :=",
+      "statement_sha256": "8c3687eafc0b8e70a1dd102c1d81c485839fef83a55a383e61f938aed9ef5df7"
+    },
+    {
+      "id": "mf2f-207a27c35c215274",
+      "name": "amc12_2001_p21",
+      "port": "accepted",
+      "statement": "theorem amc12_2001_p21 (a b c d : \u2115) (h\u2080 : a * b * c * d = 8!) (h\u2081 : a * b + a + b = 524)\n    (h\u2082 : b * c + b + c = 146) (h\u2083 : c * d + c + d = 104) : \u2191a - \u2191d = (10 : \u2124) :=",
+      "statement_sha256": "9e0e7abf632d3dcfbf490a3f978edcb2fc6596c8e4cb7ceb860864dbbd2ebfa3"
+    },
+    {
+      "id": "mf2f-20f5d4666c0839d4",
+      "name": "algebra_2varlineareq_fp3zeq11_3tfm1m5zeqn68_feqn10_zeq7",
+      "port": "accepted",
+      "statement": "theorem algebra_2varlineareq_fp3zeq11_3tfm1m5zeqn68_feqn10_zeq7 (f z : \u2102) (h\u2080 : f + 3 * z = 11)\n    (h\u2081 : 3 * (f - 1) - 5 * z = -68) : f = -10 \u2227 z = 7 :=",
+      "statement_sha256": "2f430d252c193431cfd4c5585c4c07407c9af0256b67aa9d47fd8fb6aa1ac0f6"
+    },
+    {
+      "id": "mf2f-224b9776d368ba9b",
+      "name": "mathd_algebra_513",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_513 (a b : \u211d) (h\u2080 : 3 * a + 2 * b = 5) (h\u2081 : a + b = 2) : a = 1 \u2227 b = 1 :=",
+      "statement_sha256": "0264731c529f534c55f4a9578b268303d32e7133987bae8ba38cc693889cdb0a"
+    },
+    {
+      "id": "mf2f-2282cf472031bd05",
+      "name": "amc12b_2002_p7",
+      "port": "accepted",
+      "statement": "theorem amc12b_2002_p7 (a b c : \u2115) (h\u2080 : 0 < a \u2227 0 < b \u2227 0 < c) (h\u2081 : b = a + 1) (h\u2082 : c = b + 1)\n    (h\u2083 : a * b * c = 8 * (a + b + c)) : a ^ 2 + (b ^ 2 + c ^ 2) = 77 :=",
+      "statement_sha256": "01d0924bf4d2d6d00c71d28138e4865fc200c89408066ca632799572e4bc69e1"
+    },
+    {
+      "id": "mf2f-230189fa5e06c3b3",
+      "name": "mathd_algebra_129",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_129 (a : \u211d) (h\u2080 : a \u2260 0) (h\u2081 : 8\u207b\u00b9 / 4\u207b\u00b9 - a\u207b\u00b9 = 1) : a = -2 :=",
+      "statement_sha256": "7650df3f77bca22f8eb6fb2ddd8152551179f3c6875907aef557eed99ac1e39e"
+    },
+    {
+      "id": "mf2f-23a7cc1491a9cc1a",
+      "name": "mathd_algebra_246",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_246 (a b : \u211d) (f : \u211d \u2192 \u211d) (h\u2080 : \u2200 x, f x = a * x ^ 4 - b * x ^ 2 + x + 5)\n    (h\u2082 : f (-3) = 2) : f 3 = 8 :=",
+      "statement_sha256": "21ace40ffbbd0bac271bbe24af5d373d38a991aee0cc5ba476b426891ed485b9"
+    },
+    {
+      "id": "mf2f-28982335c61999ce",
+      "name": "mathd_numbertheory_222",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_222 (b : \u2115) (h\u2080 : Nat.lcm 120 b = 3720) (h\u2081 : Nat.gcd 120 b = 8) :\n    b = 248 :=",
+      "statement_sha256": "9ea2eeb5baab9aea55afd7afac59b566cf0ae9cbcff5d2138a0e81a2b74feaa9"
+    },
+    {
+      "id": "mf2f-28ac8d4826a55569",
+      "name": "amc12a_2021_p14",
+      "port": "accepted",
+      "statement": "theorem amc12a_2021_p14 :\n    (\u2211 k \u2208 Finset.Icc 1 20, Real.logb (5 ^ k) (3 ^ k ^ 2)) *\n        \u2211 k \u2208 Finset.Icc 1 100, Real.logb (9 ^ k) (25 ^ k) =\n      21000 :=",
+      "statement_sha256": "e038de9f6c3ee3d3d1dbda8c5bddd2cd4ff34c5b9127502facba531762b3dcf3"
+    },
+    {
+      "id": "mf2f-28e782d97f811885",
+      "name": "amc12a_2003_p23",
+      "port": "accepted",
+      "statement": "theorem amc12a_2003_p23 (S : Finset \u2115)\n    (h\u2080 : \u2200 k : \u2115, k \u2208 S \u2194 0 < k \u2227 (k * k : \u2115) \u2223 \u220f i \u2208 Finset.Icc 1 9, i !) : S.card = 672 :=",
+      "statement_sha256": "75eb20a0152ae3c3b5b91b2e75492caf21e334930e85c5209048fddcad94f302"
+    },
+    {
+      "id": "mf2f-28e7ed68768d9c06",
+      "name": "mathd_algebra_276",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_276 (a b : \u2124)\n    (h\u2080 : \u2200 x : \u211d, 10 * x ^ 2 - x - 24 = (a * x - 8) * (b * x + 3)) : a * b + b = 12 :=",
+      "statement_sha256": "fb5ad6e4c5aba2c0a5a73394571e816549fa39de611afdb538d4e2221887fd75"
+    },
+    {
+      "id": "mf2f-29823edee8d76a8e",
+      "name": "induction_pord1p1on2powklt5on2",
+      "port": "accepted",
+      "statement": "theorem induction_pord1p1on2powklt5on2 (n : \u2115) (h\u2080 : 0 < n) :\n    \u220f k \u2208 Finset.Icc 1 n, (1 + (1 : \u211d) / 2 ^ k) < 5 / 2 :=",
+      "statement_sha256": "a4c30c7265a0dbe733c7acedc3316fbbc72796958316d7fe6569a23eaf407e3b"
+    },
+    {
+      "id": "mf2f-2a964a9867622536",
+      "name": "imo_1960_p2",
+      "port": "accepted",
+      "statement": "theorem imo_1960_p2 :\n    { x : \u211d |\n      0 \u2264 1 + 2 * x \u2227 (1 - Real.sqrt (1 + 2 * x)) ^ 2 \u2260 0 \u2227\n      4 * x ^ 2 / (1 - Real.sqrt (1 + 2 * x)) ^ 2 < 2 * x + 9 } = Set.Ico (-(1 / 2)) (45 / 8) \\ {0} :=",
+      "statement_sha256": "44944b74d3b32c7053f875bb1525df592c227dbdb60c46af97a015b5a25c879d"
+    },
+    {
+      "id": "mf2f-2b16bab9e8e29f19",
+      "name": "numbertheory_4x3m7y3neq2003",
+      "port": "accepted",
+      "statement": "theorem numbertheory_4x3m7y3neq2003 (x y : \u2124) : 4 * x ^ 3 - 7 * y ^ 3 \u2260 2003 :=",
+      "statement_sha256": "f84911f70d27a5182ff13e8987bce0d1570f20319fb619479370de9fad298e72"
+    },
+    {
+      "id": "mf2f-2bc522bd29bd2379",
+      "name": "algebra_amgm_sum1toneqn_prod1tonleq1",
+      "port": "accepted",
+      "statement": "theorem algebra_amgm_sum1toneqn_prod1tonleq1 (a : \u2115 \u2192 NNReal) (n : \u2115)\n    (h\u2080 : \u2211 x \u2208 Finset.range n, a x = n) : \u220f x \u2208 Finset.range n, a x \u2264 1 :=",
+      "statement_sha256": "0c68d4ae36c7fa8636f69f3208eefb087db6c0b7267225a511cd24d28ac7419c"
+    },
+    {
+      "id": "mf2f-2bd2d0b92655074f",
+      "name": "amc12b_2021_p9",
+      "port": "accepted",
+      "statement": "theorem amc12b_2021_p9 :\n    Real.log 80 / Real.log 2 / (Real.log 2 / Real.log 40) -\n        Real.log 160 / Real.log 2 / (Real.log 2 / Real.log 20) =\n      2 :=",
+      "statement_sha256": "44f4e99d9095ed370b7ea2c0322b0fd1aa784751ef052dbc0cff21bd4799eac2"
+    },
+    {
+      "id": "mf2f-2c7e9eff30c7d1e6",
+      "name": "mathd_numbertheory_447",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_447 :\n    \u2211 k \u2208 Finset.filter (fun x => 3 \u2223 x) (Finset.Icc 1 49), k % 10 = 78 :=",
+      "statement_sha256": "7cd52b8bd2b27ec666763478c078a06edec5513c4dd5750d28ac662052ea79df"
+    },
+    {
+      "id": "mf2f-2f47f7e452687735",
+      "name": "mathd_algebra_296",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_296 : abs ((3491 - 60) * (3491 + 60) - 3491 ^ 2 : \u2124) = 3600 :=",
+      "statement_sha256": "8d5ae35b8023b286808f577d02dd13911917167120bd2c3d73dfa66df5c9ba0f"
+    },
+    {
+      "id": "mf2f-337bf8426b8dedd7",
+      "name": "imoshortlist_2007_algebra_p6",
+      "port": "accepted",
+      "statement": "theorem imoshortlist_2007_algebra_p6 (a : \u2115 \u2192 NNReal)\n    (h\u2080 : \u2211 x \u2208 Finset.range 100, a (x + 1) ^ 2 = 1) :\n    \u2211 x \u2208 Finset.range 99, a (x + 1) ^ 2 * a (x + 2) + a 100 ^ 2 * a 1 < 12 / 25 :=",
+      "statement_sha256": "7b8c78b9e2aa8db0d931cdbdf1dfef928360aaf629bcf1016ffb4b649276af09"
+    },
+    {
+      "id": "mf2f-338402393d5b294e",
+      "name": "mathd_numbertheory_85",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_85 : 1 * 3 ^ 3 + 2 * 3 ^ 2 + 2 * 3 + 2 = 53 :=",
+      "statement_sha256": "9dafc00b4fe9b154b0cb7d065543046c33a2b3fd53b4ec5e642998e45baa4bc6"
+    },
+    {
+      "id": "mf2f-3503d375ba43b868",
+      "name": "amc12b_2020_p6",
+      "port": "accepted",
+      "statement": "theorem amc12b_2020_p6 (n : \u2115) (h\u2080 : 9 \u2264 n) : \u2203 x : \u2115, (x : \u211d) ^ 2 = ((n + 2)! - (n + 1)!) / n ! :=",
+      "statement_sha256": "09df83edf95a222fb390f0a97e21cb2e4fb26313fec0c270048bfc82661625b3"
+    },
+    {
+      "id": "mf2f-35c17ead403abd70",
+      "name": "mathd_algebra_320",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_320 (x : NNReal) (a b c : \u2115) (h\u2080 : 0 < a \u2227 0 < b \u2227 0 < c)\n    (h\u2081 : 2 * x ^ 2 = 4 * x + 9) (h\u2082 : x = (a + NNReal.sqrt b) / c)\n    (h\u2083 : (\u00ac\u2203 n > 1, n \u2223 a \u2227 n ^ 2 \u2223 b \u2227 n \u2223 c) \u2227 \u00acIsSquare b) : a + b + c = 26 :=",
+      "statement_sha256": "e43b67eca5f9617aead13b5813071b059765ad580629aaeb6ea5c79cb723072f"
+    },
+    {
+      "id": "mf2f-3766b1f84a1ba936",
+      "name": "algebra_apbmpcneq0_aeq0anbeq0anceq0",
+      "port": "accepted",
+      "statement": "theorem algebra_apbmpcneq0_aeq0anbeq0anceq0 (a b c : \u211a) (m n : \u211d) (h\u2080 : 0 < m \u2227 0 < n)\n    (h\u2081 : m ^ 3 = 2) (h\u2082 : n ^ 3 = 4) (h\u2083 : (a : \u211d) + b * m + c * n = 0) : a = 0 \u2227 b = 0 \u2227 c = 0 :=",
+      "statement_sha256": "ee958016665794c808145b4c114021252289bef52c42b29801c126f8598fbaa0"
+    },
+    {
+      "id": "mf2f-37d7e81fd02712d4",
+      "name": "mathd_algebra_412",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_412 (x y : \u211d) (h\u2080 : x + y = 25) (h\u2081 : x - y = 11) : x = 18 :=",
+      "statement_sha256": "f2634326f49c6877784b2f8927c6b92ced367fa402a6ad2ec7cb3e5dc150be70"
+    },
+    {
+      "id": "mf2f-38120df4aaeaacb5",
+      "name": "amc12a_2020_p9",
+      "port": "accepted",
+      "statement": "theorem amc12a_2020_p9 (S : Finset \u211d)\n    (h\u2080 : \u2200 x : \u211d, x \u2208 S \u2194 0 \u2264 x \u2227 x \u2264 2 * Real.pi \u2227 Real.tan (2 * x) = Real.cos (x / 2)) :\n    S.card = 5 :=",
+      "statement_sha256": "360908f1b078743355df9a015ff9a87884e20da4402b1ddd0e2ffbad3a2e5176"
+    },
+    {
+      "id": "mf2f-381f247888bb25db",
+      "name": "amc12b_2020_p21",
+      "port": "accepted",
+      "statement": "theorem amc12b_2020_p21 (S : Finset \u2115)\n    (h\u2080 : \u2200 n : \u2115, n \u2208 S \u2194 0 < n \u2227 (\u2191n + (1000 : \u211d)) / 70 = Int.floor (Real.sqrt n)) : S.card = 6 :=",
+      "statement_sha256": "e8f423e886600b134d24a3d692e3fbf3de186cd392f66055823345d533b36a84"
+    },
+    {
+      "id": "mf2f-39a38c1d6aee477d",
+      "name": "mathd_numbertheory_521",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_521 (m n : \u2115) (h\u2080 : Even m) (h\u2081 : Even n) (h\u2082 : m - n = 2)\n    (h\u2083 : m * n = 288) : m = 18 :=",
+      "statement_sha256": "c85309d4a9ace1b4c9ff36c0a19c74809e44b35346a336a3273fb3e4574fddb0"
+    },
+    {
+      "id": "mf2f-39beca7c831a65a6",
+      "name": "aime_1991_p9",
+      "port": "accepted",
+      "statement": "theorem aime_1991_p9 (x : \u211d) (m : \u211a) (h\u2080 : 1 / Real.cos x + Real.tan x = 22 / 7)\n    (h\u2081 : 1 / Real.sin x + 1 / Real.tan x = m) : \u2191m.den + m.num = 44 :=",
+      "statement_sha256": "a56520a7e58a9e94a52357d3f12e318c3c77489d3c5a57fe6437a8f87d5d9af8"
+    },
+    {
+      "id": "mf2f-3c75252d6cc3f8dc",
+      "name": "mathd_algebra_270",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_270 (f : \u211d \u2192 \u211d) (h\u2080 : \u2200 x \u2260 -2, f x = 1 / (x + 2)) :\n    f (f 1) = 3 / 7 :=",
+      "statement_sha256": "822115eabf5b0e74b2cd58e0654642f887ece32446275ed58d85da5228139dcb"
+    },
+    {
+      "id": "mf2f-3cea08140c8219a4",
+      "name": "mathd_numbertheory_451",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_451 (S : Finset \u2115)\n    (h\u2080 :\n      \u2200 n : \u2115,\n        n \u2208 S \u2194\n          2010 \u2264 n \u2227 n \u2264 2019 \u2227 \u2203 m, (Nat.divisors m).card = 4 \u2227 \u2211 p \u2208 Nat.divisors m, p = n) :\n    \u2211 k \u2208 S, k = 2016 :=",
+      "statement_sha256": "5bfe84462832132301e33cc13da787ce7195fdf6ca4b164b70b8473a9c891418"
+    },
+    {
+      "id": "mf2f-3d65d3e5bee4c58e",
+      "name": "mathd_algebra_362",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_362 (a b : \u211d) (h\u2080 : a ^ 2 * b ^ 3 = 32 / 27) (h\u2081 : a / b ^ 3 = 27 / 4) :\n    a + b = 8 / 3 :=",
+      "statement_sha256": "66f40abc3c6424bfae5abbf3a64df541e86f5d7b157768ac7be10c38155644da"
+    },
+    {
+      "id": "mf2f-3e427eb98e5919cf",
+      "name": "amc12a_2019_p12",
+      "port": "accepted",
+      "statement": "theorem amc12a_2019_p12 (x y : \u211d) (h\u2080 : x \u2260 1 \u2227 y \u2260 1)\n    (h\u2081 : Real.log x / Real.log 2 = Real.log 16 / Real.log y) (h\u2082 : x * y = 64) :\n    (Real.log (x / y) / Real.log 2) ^ 2 = 20 :=",
+      "statement_sha256": "5175587d6d4fdfd45f6672d3a376e589adee164fa6cf29b160ae841348fef898"
+    },
+    {
+      "id": "mf2f-3ef2a0a9be2645f9",
+      "name": "mathd_numbertheory_277",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_277 :\n    IsLeast\n       {(m + n) | (m : \u2115) (n : \u2115) (h\u2080 : Nat.gcd m n = 6) (h\u2081 : Nat.lcm m n = 126)}\n      60 :=",
+      "statement_sha256": "3fba07900e93d2fadd99179b8a0cba646af8adc922776bdc87906127cbb10f1b"
+    },
+    {
+      "id": "mf2f-4203577699508824",
+      "name": "imo_1992_p1",
+      "port": "accepted",
+      "statement": "theorem imo_1992_p1 :\n    { (p, q, r) | (p : \u2124) (q : \u2124) (r : \u2124) (h\u2080 : 1 < p \u2227 p < q \u2227 q < r)\n      (h\u2081 : (p - 1) * (q - 1) * (r - 1) \u2223 p * q * r - 1) } =\n    {(2, 4, 8), (3, 5, 15)} :=",
+      "statement_sha256": "90369f86c1df7474d1d2c4cbce132c969c4a7e1d51c898ff43f7a0d1c4e62ced"
+    },
+    {
+      "id": "mf2f-420abc19d1aaa63e",
+      "name": "amc12a_2020_p4",
+      "port": "accepted",
+      "statement": "theorem amc12a_2020_p4 (S : Finset \u2115)\n    (h\u2080 : \u2200 n : \u2115, n \u2208 S \u2194 1000 \u2264 n \u2227 n \u2264 9999 \u2227 (\u2200 d : \u2115, d \u2208 Nat.digits 10 n \u2192 Even d) \u2227 5 \u2223 n) :\n    S.card = 100 :=",
+      "statement_sha256": "da830278964b5e034842f51c31e33a99ff883192055b2d99be0d41236c089f3a"
+    },
+    {
+      "id": "mf2f-42f2f61b29b5e309",
+      "name": "aime_1999_p11",
+      "port": "accepted",
+      "statement": "theorem aime_1999_p11 (m : \u211a) (h\u2080 : 0 < m)\n    (h\u2081 : \u2211 k \u2208 Finset.Icc (1 : \u2115) 35, Real.sin (5 * k * \u03c0 / 180) = Real.tan (m * \u03c0 / 180))\n    (h\u2082 : (m.num : \u211d) / m.den < 90) : \u2191m.den + m.num = 177 :=",
+      "statement_sha256": "44fdb87ce08f090b1913e1a2067a5f1a5c44bf8ec6837cf26c5722aeae800484"
+    },
+    {
+      "id": "mf2f-433633ac3d0aff67",
+      "name": "mathd_numbertheory_328",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_328 : 5 ^ 999999 % 7 = 6 :=",
+      "statement_sha256": "5b6ce090f947f31fdb0a8a2505e6d805a06693373ad401f8eb112e3decac1127"
+    },
+    {
+      "id": "mf2f-4377ac9d2b8f8786",
+      "name": "mathd_numbertheory_299",
+      "port": "accepted",
+      "statement": "theorem mathd_numbertheory_299 : 1 * 3 * 5 * 7 * 9 * 11 * 13 % 10 = 5 :=",
+      "statement_sha256": "e98d1e8dfed3bb4e0b6eae8ae9796639091e081928960aa0dabbd1784f0662c2"
+    },
+    {
+      "id": "mf2f-43b9f633b120e29c",
+      "name": "imo_1984_p6",
+      "port": "accepted",
+      "statement": "theorem imo_1984_p6 (a b c d k m : \u2115) (h\u2080 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d)\n    (h\u2081 : Odd a \u2227 Odd b \u2227 Odd c \u2227 Odd d) (h\u2082 : a < b \u2227 b < c \u2227 c < d) (h\u2083 : a * d = b * c)\n    (h\u2084 : a + d = 2 ^ k) (h\u2085 : b + c = 2 ^ m) : a = 1 :=",
+      "statement_sha256": "9e8ba8ff9df847e077dce1337dcfa148ccbef70cfeb287f9b09fa82ede140455"
+    },
+    {
+      "id": "mf2f-43c5c0fcd09d0354",
+      "name": "numbertheory_2pownm1prime_nprime",
+      "port": "accepted",
+      "statement": "theorem numbertheory_2pownm1prime_nprime (n : \u2115) (h\u2080 : 0 < n) (h\u2081 : Nat.Prime (2 ^ n - 1)) :\n    Nat.Prime n :=",
+      "statement_sha256": "c95672bde8ca68fb967dc3babdc1996307bbebe720a3b67cc96031a0b26d65b5"
+    },
+    {
+      "id": "mf2f-43db7a82d562ee63",
+      "name": "aime_1987_p5",
+      "port": "accepted",
+      "statement": "theorem aime_1987_p5 (x y : \u2124) (h\u2080 : y ^ 2 + 3 * (x ^ 2 * y ^ 2) = 30 * x ^ 2 + 517) :\n    3 * (x ^ 2 * y ^ 2) = 588 :=",
+      "statement_sha256": "531236e9cbf87b151fa8deddbaef871de21ef3bb357daf2d72810605b329a160"
+    },
+    {
+      "id": "mf2f-454a785b11531535",
+      "name": "algebra_absxm1pabsxpabsxp1eqxp2_0leqxleq1",
+      "port": "accepted",
+      "statement": "theorem algebra_absxm1pabsxpabsxp1eqxp2_0leqxleq1 (x : \u211d)\n    (h\u2080 : abs (x - 1) + abs x + abs (x + 1) = x + 2) : 0 \u2264 x \u2227 x \u2264 1 :=",
+      "statement_sha256": "64676b792bcd5a2a15c3bb9e8379d77f0c3f5dd2bebcfd47cea74946f25329c4"
+    },
+    {
+      "id": "mf2f-4568d6f6a7dcd89e",
+      "name": "imo_1963_p5",
+      "port": "accepted",
+      "statement": "theorem imo_1963_p5 : Real.cos (\u03c0 / 7) - Real.cos (2 * \u03c0 / 7) + Real.cos (3 * \u03c0 / 7) = 1 / 2 :=",
+      "statement_sha256": "bb2a3b9030e696a6dc2735f69e0b5b19b77f8b5c74264699721c3ac45290b722"
+    },
+    {
+      "id": "mf2f-461ca353c66139e6",
+      "name": "mathd_algebra_419",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_419 (a b : \u211d) (h\u2080 : a = -1) (h\u2081 : b = 5) : -a - b ^ 2 + 3 * (a * b) = -39 :=",
+      "statement_sha256": "321e76f5084bf065549ccf7fcbf2b1f7eeb6fa3130958e7467c0b550f534216a"
+    },
+    {
+      "id": "mf2f-46e5e1320f954db4",
+      "name": "aime_1983_p2",
+      "port": "accepted",
+      "statement": "theorem aime_1983_p2 (p : \u211d) (f : \u211d \u2192 \u211d) (h\u2080 : 0 < p \u2227 p < 15)\n    (h\u2082 : \u2200 x, f x = abs (x - p) + abs (x - 15) + abs (x - p - 15)) : IsLeast (f '' Set.Icc p 15) 15 :=",
+      "statement_sha256": "c88cacecf23e14c63c985641725c7d7e35aa6a484d34177e07fb7c8dc7f9ebb8"
+    },
+    {
+      "id": "mf2f-46fb869b0f525d80",
+      "name": "mathd_algebra_478",
+      "port": "accepted",
+      "statement": "theorem mathd_algebra_478 (b h v : \u211d) (h\u2080 : 0 < b \u2227 0 < h \u2227 0 < v) (h\u2081 : v = 1 / 3 * (b * h))\n    (h\u2082 : b = 30) (h\u2083 : h = 13 / 2) : v = 65 :=",
+      "statement_sha256": "be0772accae44734ca8ca41fef51831ed331e20e503711b0c8f0a9f03cb4107e"
+    }
+  ],
+  "accepted_targets_sha256": "66ceb3355fda0bf5c496dbf5eae9a5dd7899f2e0d7de427e923c23f7f5e0385e",
+  "benchmark": "Google DeepMind miniF2F Lean 4",
+  "excluded_targets": [
+    {
+      "id": "mf2f-497caa56750740df",
+      "name": "mathd_algebra_304",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-49dc3d203fc8243a",
+      "name": "amc12b_2021_p13",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-4a7f9b7285d428f8",
+      "name": "amc12b_2020_p2",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-4d0432ef2db92f08",
+      "name": "imo_2019_p1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-4f46cdf58e3f14e9",
+      "name": "mathd_algebra_398",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-521fca87305bea54",
+      "name": "mathd_numbertheory_517",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-53f0a47cf5a2a69f",
+      "name": "mathd_numbertheory_559",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-54450e4f5d32348d",
+      "name": "algebra_cubrtrp1oncubrtreq3_rcubp1onrcubeq5778",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-54b2cce7c9f8cc39",
+      "name": "numbertheory_notequiv2i2jasqbsqdiv8",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-54f9aa3da743f6c1",
+      "name": "mathd_algebra_24",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-5566b5237232ee4a",
+      "name": "mathd_algebra_388",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-56bdd89576279996",
+      "name": "mathd_algebra_160",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-58b65c90fd6f25e5",
+      "name": "imo_1985_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-5a67d35bfbfa3d9f",
+      "name": "aime_1988_p8",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-5b02ae48268e4d05",
+      "name": "mathd_algebra_432",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-5df33e241c2194de",
+      "name": "algebra_ineq_nto1onlt2m1on",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-60e5a160f47f727e",
+      "name": "algebra_abpbcpcageq3_sumaonsqrtapbgeq3onsqrt2",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-61c9533ad12c1131",
+      "name": "mathd_algebra_153",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-62cf9d66b450f31a",
+      "name": "mathd_numbertheory_254",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6758c56f63385e37",
+      "name": "imo_1982_p1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-67e7506eaa3ad9b1",
+      "name": "mathd_numbertheory_293",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6840da7db822a853",
+      "name": "mathd_numbertheory_618",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-69a4d37d37369f56",
+      "name": "amc12a_2002_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6bb11ab6ecd84058",
+      "name": "mathd_numbertheory_343",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6ce5154e7470789e",
+      "name": "mathd_numbertheory_233",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6d47936af4a09ec1",
+      "name": "imo_1962_p2",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6d8b37cd67d4b150",
+      "name": "mathd_algebra_139",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6fbe5d9bba65150e",
+      "name": "imo_1965_p2",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-6fc07a5e73e40a1f",
+      "name": "algebra_9onxpypzleqsum2onxpy",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-713d3e7cd8e1cf04",
+      "name": "mathd_algebra_170",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7409292ae79f359b",
+      "name": "mathd_algebra_184",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-75088a2028fd4c68",
+      "name": "mathd_algebra_171",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-75a1d195fc62ad69",
+      "name": "mathd_algebra_338",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-75b9d919446bde77",
+      "name": "mathd_algebra_143",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-763b9598ebff2978",
+      "name": "mathd_algebra_400",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-77cb9c2f2ce3f563",
+      "name": "imo_2001_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-78558d375ce40669",
+      "name": "mathd_algebra_80",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-78d07b996e67c88e",
+      "name": "amc12a_2013_p4",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7a961ca0fa19cd36",
+      "name": "mathd_numbertheory_341",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7ab088c5037b6d58",
+      "name": "mathd_numbertheory_728",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7afc3b9d9375b9ff",
+      "name": "mathd_numbertheory_234",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7c4e59e5f3a19305",
+      "name": "mathd_algebra_440",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7c70e7182afe2157",
+      "name": "mathd_algebra_17",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7defb44c1be80681",
+      "name": "mathd_numbertheory_247",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7e291d8acaab0731",
+      "name": "algebra_apbpceq2_abpbcpcaeq1_aleq1on3anbleq1ancleq4on3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7e72931a977e442b",
+      "name": "amc12b_2002_p19",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-7fe62e938494116c",
+      "name": "algebra_sum1onsqrt2to1onsqrt10000lt198",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8034c65956b7a25b",
+      "name": "amc12a_2021_p25",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8084d398fd3d5929",
+      "name": "numbertheory_aoddbdiv4asqpbsqmod8eq1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-83483da44b3ee327",
+      "name": "mathd_algebra_484",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-85e3e613c72111aa",
+      "name": "mathd_numbertheory_764",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-85fc8d913586189e",
+      "name": "mathd_algebra_359",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8655c9c79658608b",
+      "name": "mathd_algebra_332",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-867db60ec54b2423",
+      "name": "mathd_algebra_113",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-86f7206340a9db8d",
+      "name": "induction_11div10tonmn1ton",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8718e4c18d9680a5",
+      "name": "amc12b_2002_p4",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-886da6928364fb04",
+      "name": "mathd_algebra_125",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8a828f7dfdf20e82",
+      "name": "imo_1983_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8c159db488c2d88c",
+      "name": "mathd_numbertheory_314",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8cf4d730313c04be",
+      "name": "mathd_numbertheory_457",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8d6dce89bbc17ebf",
+      "name": "mathd_algebra_756",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8e824d09e4d31798",
+      "name": "mathd_algebra_487",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8f2d4e811147bcf3",
+      "name": "numbertheory_fxeq4powxp6powxp9powx_f2powmdvdf2pown",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-8fb494c707c21575",
+      "name": "amc12a_2002_p13",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-94ebde2e8be5a829",
+      "name": "mathd_numbertheory_320",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9838ef703aa1640d",
+      "name": "algebra_amgm_sumasqdivbgeqsuma",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-983a27f03695fc4e",
+      "name": "mathd_algebra_196",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-99631cfcc6272a35",
+      "name": "mathd_numbertheory_430",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9af3b32458b2a5df",
+      "name": "imo_1977_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9b3ff9b3ddff1486",
+      "name": "amc12b_2020_p22",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9bc79bd425ccc9ca",
+      "name": "aime_1994_p3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9c155bad2e9eea06",
+      "name": "aime_1989_p8",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9d610b8e92c3189e",
+      "name": "mathd_numbertheory_296",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-9db3499ca0c5a850",
+      "name": "mathd_algebra_288",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a01318ffad91ade3",
+      "name": "mathd_algebra_215",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a11eccf00e910b08",
+      "name": "mathd_algebra_188",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a15efdbc3b152b84",
+      "name": "imo_1974_p3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a32f17df8dc25e19",
+      "name": "mathd_algebra_313",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a491d4202e5c3ea9",
+      "name": "imo_1997_p5",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a648a8b219eb13de",
+      "name": "aime_1983_p3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a67d80cdf5042b82",
+      "name": "mathd_numbertheory_495",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a7c36919bf585816",
+      "name": "mathd_algebra_263",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a7f07284e85833e8",
+      "name": "algebra_others_exirrpowirrrat",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-a94a070062e7f155",
+      "name": "aime_1997_p9",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-aa27941778743518",
+      "name": "mathd_numbertheory_127",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-aa70bac572b20d04",
+      "name": "mathd_numbertheory_175",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-aabcffa116bfac57",
+      "name": "aime_1984_p1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ab721177dc8ea334",
+      "name": "mathd_numbertheory_342",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ad43b45e1dd64e16",
+      "name": "mathd_numbertheory_1124",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-adddaf6d3c430ea0",
+      "name": "mathd_numbertheory_12",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-adeb3e3eb02ab6cc",
+      "name": "mathd_numbertheory_551",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ae901997f703da6a",
+      "name": "mathd_algebra_114",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b0df83838aecc7f4",
+      "name": "mathd_numbertheory_582",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b19b9e3e53546945",
+      "name": "mathd_algebra_329",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b2fce8b53d14488b",
+      "name": "aime_1995_p7",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b38aa5ceb5cbdba4",
+      "name": "mathd_algebra_427",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b49810c2f29c2db7",
+      "name": "amc12a_2009_p7",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b4f73a0eba2fc22b",
+      "name": "mathd_algebra_33",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b57acd563aee71ac",
+      "name": "numbertheory_x5neqy2p4",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b6a15163a0ce3cdc",
+      "name": "mathd_algebra_141",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b7ebe0959da0dc12",
+      "name": "imo_1964_p2",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b819ad58ca9dc243",
+      "name": "amc12a_2020_p10",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-b8dfde60a4794f5a",
+      "name": "amc12a_2020_p25",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-bcf8033f64a298a5",
+      "name": "aime_1990_p15",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-bd1d8bd7182c0a98",
+      "name": "mathd_numbertheory_150",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-be27f3e07bac2693",
+      "name": "aime_1983_p1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c135763be97301e6",
+      "name": "amc12_2000_p1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c608499de1732cf2",
+      "name": "mathd_numbertheory_229",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c6daa312cb6e8cc1",
+      "name": "amc12_2000_p20",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c6f4728a685638e1",
+      "name": "amc12_2000_p12",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c7666e42446b11f2",
+      "name": "amc12a_2021_p8",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c8172fe657df08b3",
+      "name": "amc12a_2021_p18",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c87a61dc9f919b09",
+      "name": "mathd_algebra_441",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c8dcc65eb56b95c5",
+      "name": "amc12b_2020_p13",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c914c4910112d008",
+      "name": "induction_pprime_pdvdapowpma",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-c9dd71f6ee1739ef",
+      "name": "mathd_algebra_459",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ca961bb3fc3fa6a4",
+      "name": "mathd_algebra_293",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-cbe39522a111e341",
+      "name": "mathd_algebra_209",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ccb747a1295f8a0e",
+      "name": "mathd_algebra_314",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-cde2080e0d4f4840",
+      "name": "mathd_algebra_354",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d2281eaae4c42583",
+      "name": "mathd_numbertheory_769",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d279f13b616d273e",
+      "name": "algebra_bleqa_apbon2msqrtableqambsqon8b",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d2edb214108340c1",
+      "name": "mathd_numbertheory_427",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d3097aa28b4f70a2",
+      "name": "mathd_numbertheory_227",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d3bb5eb4d444c550",
+      "name": "mathd_numbertheory_99",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d40b796d4659cfa3",
+      "name": "mathd_numbertheory_239",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d60bd0bdb950e06f",
+      "name": "mathd_numbertheory_235",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d6771b817ecaebbc",
+      "name": "mathd_numbertheory_321",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d799b3a26e7f1bf8",
+      "name": "mathd_algebra_289",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d87f1d0170493c3e",
+      "name": "amc12b_2021_p1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-d8aa33ecb17eb497",
+      "name": "induction_prod1p1onk3le3m1onn",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-da177ccabc295a47",
+      "name": "amc12a_2021_p9",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-dabcbce02c6930f8",
+      "name": "amc12b_2002_p2",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-dd10c18700cbf447",
+      "name": "algebra_sqineq_unitcircatbpabsamblt1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-dd18c86ee09ccfe4",
+      "name": "amc12b_2021_p4",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-dd627b0ae03b8668",
+      "name": "amc12a_2003_p5",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-de3599b44afef4a8",
+      "name": "imo_1981_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-debdeacb6af16b49",
+      "name": "algebra_absapbon1pabsapbleqsumabsaon1pabsa",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-def5ff3295fc2316",
+      "name": "mathd_numbertheory_435",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-df9ad0af5628cb0c",
+      "name": "mathd_algebra_44",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-dfaa9ce306f10f39",
+      "name": "algebra_sqineq_unitcircatbpamblt1",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e0d0f228f2eb9a0e",
+      "name": "amc12a_2021_p3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e13884dfb26f6c37",
+      "name": "mathd_algebra_76",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e15cec67c319b668",
+      "name": "mathd_algebra_142",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e35b56a664945688",
+      "name": "mathd_numbertheory_135",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e62d84cf586cdeaf",
+      "name": "mathd_numbertheory_711",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e64820399d079f12",
+      "name": "mathd_numbertheory_353",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e65f3da56dd4b0a3",
+      "name": "amc12a_2021_p22",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e6d221b31b26976a",
+      "name": "induction_sumkexp3eqsumksq",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e80a356538e715b0",
+      "name": "amc12_2000_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e8b59417bb35df4a",
+      "name": "amc12a_2009_p6",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-e94f2dd28cc0943e",
+      "name": "mathd_numbertheory_5",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ebae97135e327fcb",
+      "name": "mathd_numbertheory_765",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ebe156bf1b1f24e9",
+      "name": "induction_12dvd4expnp1p20",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ef428676027e03af",
+      "name": "amc12a_2008_p25",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ef5c5621859b8cf6",
+      "name": "amc12a_2021_p19",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f092ec5ebb3deda0",
+      "name": "mathd_algebra_275",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f0ccc73636a820a6",
+      "name": "amc12b_2021_p3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f279fbb9b41892fe",
+      "name": "mathd_numbertheory_541",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f2df545680c9828f",
+      "name": "amc12a_2020_p15",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f44992f097c2ff83",
+      "name": "mathd_algebra_156",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f520ddd7fd82e6b6",
+      "name": "mathd_algebra_346",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f7316a2ae2d6cc78",
+      "name": "mathd_numbertheory_3",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-f738450d8412ec03",
+      "name": "mathd_algebra_598",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-fc0b0094820ac206",
+      "name": "mathd_algebra_452",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-fcbab28b6d08ba45",
+      "name": "mathd_algebra_176",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-fda9e776aeaeffca",
+      "name": "mathd_numbertheory_345",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-fe975acc53b5c342",
+      "name": "mathd_numbertheory_66",
+      "reason": "selection cutoff"
+    },
+    {
+      "id": "mf2f-ff37c04bc5b9b4eb",
+      "name": "amc12a_2020_p7",
+      "reason": "selection cutoff"
+    }
+  ],
+  "excluded_targets_sha256": "6603685005a47a9907e8206391f51c81c9d112e3a110588379c96c21e3260487",
+  "lean_toolchain": "leanprover/lean4:v4.30.0",
+  "mathlib_commit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+  "port_check": {
+    "all_candidates_build": true,
+    "candidate_count": 244
+  },
+  "premise_policy": "Mathlib declarations only",
+  "schema": 1,
+  "selection": "SHA-256 canonical theorem name order; first 75 successful 4.30 ports",
+  "split": "Test",
+  "upstream_commit": "f0a20e14c1eeccd859d51bb4c2b3ee487889c303",
+  "upstream_problem_imports_sha256": "ed4eb9efdfe3698c65ccd225e804a32f4027f32d64e47376df20681f268024d6",
+  "upstream_test_sha256": "8e135204947654a6f5234ee3da830ea7b72337f33dc29229fd8be6c69ac1c0b7",
+  "upstream_url": "https://github.com/google-deepmind/miniF2F"
+}
