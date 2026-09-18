@@ -94,6 +94,16 @@ private def aesopFirst : ActionRanker := fun _ actions =>
 
 private def reverseRanker : ActionRanker := fun _ actions => pure actions.reverse
 
+private def budgetedActions : ActionSource := fun config => do
+  let actions ← catalogue { config with maxRetrievedNames := 0 }
+  let some closing := actions.find? (·.text == "exact h") |
+    throwError "missing local closing action"
+  return [
+    { tacticSyntax := ← `(tactic| skip), text := "skip one" },
+    { tacticSyntax := ← `(tactic| skip), text := "skip two" },
+    closing
+  ]
+
 private def disjunctionActions : ActionSource := fun _ => do
   return (← catalogue { maxRetrievedNames := 0 }).filter fun action =>
     action.text.startsWith "intro " || action.text.startsWith "cases " ||
@@ -380,6 +390,17 @@ elab "jev_test_budget_exhaustion" : tactic => withMainContext do
     throwError "rank-call exhaustion did not retain catalogue order"
   evalTactic (← `(tactic| intro h; exact h))
 
+elab "jev_test_transition_budget" : tactic => withMainContext do
+  unless (← searchWith { maxDepth := 1, maxCost := 1, maxHeartbeats := 2 }
+      budgetedActions identityRanker).isNone do
+    throwError "the scheduler exceeded the transition budget before the closing action"
+  let some budgeted ← searchWith { maxDepth := 1, maxCost := 1, maxHeartbeats := 3 }
+      budgetedActions identityRanker
+    | throwError "the scheduler did not admit the closing action at its transition budget"
+  unless budgeted.path.map (·.text) == ["exact h"] do
+    throwError "the scheduler did not preserve candidate order under its transition budget"
+  replay budgeted.path
+
 elab "jev_test_failed_metavariable_branch" : tactic => withMainContext do
   let root ← initialNode
   let actions : List Action := [
@@ -437,6 +458,10 @@ example (P : Prop) : P → P := by
 /-- Exhausted node and rank-call budgets fail without mutating the caller state. -/
 example (P : Prop) : P → P := by
   jev_test_budget_exhaustion
+
+/-- The scheduler counts every attempted transition before admitting later candidates. -/
+example (P : Prop) (h : P) : P := by
+  jev_test_transition_budget
 
 /-- Failed refinements cannot leak assigned metavariables into later candidates. -/
 example : ∃ n : Nat, n = 1 := by
