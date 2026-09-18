@@ -64,6 +64,30 @@ lemma stepHalt_of_isHalting (step : TestStep) (h : isHalting step) : step = .hal
 
 def irrelevantDefinition : Prop := True
 
+inductive ParseTree where
+  | leaf
+  | branch : ParseTree → ParseTree → ParseTree
+
+def ParseTree.height : ParseTree → Nat
+  | .leaf => 1
+  | .branch left right => max left.height right.height + 1
+
+lemma ParseTree.one_le_height (tree : ParseTree) : 1 ≤ tree.height := by
+  cases tree <;> simp [height]
+
+private def dataCaseActions : ActionSource := fun config => do
+  let actions ← catalogue { config with maxRetrievedNames := 0 }
+  return actions.filter (·.text == "cases tree") ++ [
+    { tacticSyntax := ← `(tactic| simp [ParseTree.height]), text := "simp [ParseTree.height]" }
+  ]
+
+private def generalizedInductionActions : ActionSource := fun config => do
+  let actions ← catalogue { config with maxRetrievedNames := 0 }
+  return actions.filter (·.text == "induction xs generalizing acc") ++ [
+    { tacticSyntax := ← `(tactic| simp [JevLean.totalFrom, List.sum, *, Nat.add_assoc]),
+      text := "simp [JevLean.totalFrom, List.sum, *, Nat.add_assoc]" }
+  ]
+
 private def aesopFirst : ActionRanker := fun _ actions =>
   pure <| actions.mergeSort fun left right =>
     left.text.startsWith "aesop" && !right.text.startsWith "aesop"
@@ -125,7 +149,7 @@ elab "jev_test_apply_path" : tactic => withMainContext do
   replay node.path
 
 elab "jev_test_global_retrieval" : tactic => withMainContext do
-  let config := { maxRetrievedNames := 24 }
+  let config := { maxRetrievedNames := 64 }
   let actions ← retrievedActions config
   let repeated ← retrievedActions config
   unless actions.map (·.text) == repeated.map (·.text) && actions.length <= 2 * config.maxRetrievedNames do
@@ -137,7 +161,7 @@ elab "jev_test_global_retrieval" : tactic => withMainContext do
     throwError "type-correct global exact candidate was not retrieved"
   unless actions.all fun action => action.text != "exact definitely_missing_lemma" do
     throwError "retrieval invented an unavailable name"
-  let some node ← searchWith { maxDepth := 1, maxCost := 1, maxRetrievedNames := 24 }
+  let some node ← searchWith { maxDepth := 1, maxCost := 1, maxRetrievedNames := 64 }
       retrievedActions identityRanker
     | throwError "retrieval search found no path"
   unless node.path.map (·.text) == ["exact sipserAcceptance_zero"] do
@@ -145,10 +169,10 @@ elab "jev_test_global_retrieval" : tactic => withMainContext do
   replay node.path
 
 elab "jev_test_global_apply_retrieval" : tactic => withMainContext do
-  let actions ← retrievedActions { maxRetrievedNames := 24 }
+  let actions ← retrievedActions { maxRetrievedNames := 64 }
   unless actions.any fun action => action.text == "apply sipserAcceptance_from" do
     throwError "type-correct global apply candidate was not retrieved"
-  let some node ← searchWith { maxDepth := 2, maxCost := 2, maxRetrievedNames := 24 }
+  let some node ← searchWith { maxDepth := 2, maxCost := 2, maxRetrievedNames := 64 }
       retrievalThenLocalActions identityRanker
     | throwError "retrieval apply search found no path"
   unless node.path.map (·.text) == ["apply sipserAcceptance_from", "exact h"] do
@@ -217,6 +241,48 @@ elab "jev_test_local_projection" : tactic => withMainContext do
     | throwError "local conjunction projection search found no path"
   unless node.path.map (·.text) == ["exact (h z).1"] do
     throwError "local conjunction projection path is not readable and replayable: {node.path.map (·.text)}"
+  replay node.path
+
+elab "jev_test_structural_catalogue_bounds" : tactic => withMainContext do
+  let config := {
+    maxRetrievedNames := 0, maxDataCases := 1, maxPropCases := 1, maxInductions := 1,
+    maxGeneralizingInductions := 1, maxWitnesses := 1, maxDestructures := 1
+  }
+  let actions ← catalogue config
+  let structural := actions.filter fun action =>
+    action.text.startsWith "cases " || action.text.startsWith "induction " ||
+      action.text.startsWith "refine ⟨" || action.text.startsWith "rcases "
+  unless structural.length <= 6 do
+    throwError "structural catalogue exceeded its independent bounds: {structural.map (·.text)}"
+  unless actions.any (·.text == "rcases h with ⟨jev_h, jev_h1⟩") &&
+      actions.any (·.text == "refine ⟨x, ?_⟩") do
+    throwError "destructuring or witness action was not type-checked: {actions.map (·.text)}"
+  evalTactic (← `(tactic| exact ⟨_, rfl⟩))
+
+elab "jev_test_data_case_replay" : tactic => withMainContext do
+  let config : JevLean.Search.Config := { maxDepth := 3, maxCost := 3, maxDataCases := 1, maxInductions := 0 }
+  let some node ← searchWith config dataCaseActions identityRanker
+    | throwError "data-case search found no path"
+  unless node.path.head?.map (·.text) == some "cases tree" do
+    throwError "data case was not selected before branch closers: {node.path.map (·.text)}"
+  replay node.path
+
+elab "jev_test_generalizing_induction" : tactic => withMainContext do
+  let catalogueConfig : JevLean.Search.Config := {
+    maxRetrievedNames := 0, maxDataCases := 0, maxInductions := 0,
+    maxGeneralizingInductions := 1
+  }
+  let actions ← catalogue catalogueConfig
+  unless actions.any (·.text == "induction xs generalizing acc") do
+    throwError "accumulator-generalizing induction was not generated: {actions.map (·.text)}"
+  let config : JevLean.Search.Config := {
+    maxDepth := 3, maxCost := 3, maxDataCases := 0,
+    maxInductions := 0, maxGeneralizingInductions := 1
+  }
+  let some node ← searchWith config generalizedInductionActions identityRanker
+    | throwError "generalizing induction search found no path"
+  unless node.path.head?.map (·.text) == some "induction xs generalizing acc" do
+    throwError "generalizing induction was not replayable: {node.path.map (·.text)}"
   replay node.path
 
 elab "jev_test_local_application_bound" : tactic => withMainContext do
@@ -415,6 +481,19 @@ example (P Q : Nat → Prop) (h : ∀ z, P z ↔ Q z) (z : Nat) (hp : P z) : Q z
 /-- Local applications expose common projections. -/
 example (P Q : Nat → Prop) (h : ∀ z, P z ∧ Q z) (z : Nat) : P z := by
   jev_test_local_projection
+
+/-- Destructuring and existential witnesses use checked, fresh names under independent bounds. -/
+example (P Q : Prop) (h : P ∧ Q) (x : Nat) : ∃ n, n = x := by
+  have _ := h
+  jev_test_structural_catalogue_bounds
+
+/-- ParseTree.one_le_height-style data cases remain replayable before ordered branch closers. -/
+example (tree : ParseTree) : 1 ≤ tree.height := by
+  jev_test_data_case_replay
+
+/-- exactLengthDFA_evalFrom_val-style accumulator induction generalizes the preceding state. -/
+example (acc : Nat) (xs : List Nat) : JevLean.totalFrom acc xs = acc + xs.sum := by
+  jev_test_generalizing_induction
 
 /-- Local application generation is bounded despite multiple terms and binders. -/
 example (a _b _c _d : Nat) (h : ∀ x y : Nat, x = x → y = y → y = y) :

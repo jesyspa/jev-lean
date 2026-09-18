@@ -47,6 +47,12 @@ structure Config where
   maxRewriteSimpNames : Nat := 256
   maxRewriteMs : Nat := 100
   maxUnfoldCandidates : Nat := 4
+  maxDataCases : Nat := 2
+  maxPropCases : Nat := 2
+  maxInductions : Nat := 2
+  maxGeneralizingInductions : Nat := 1
+  maxWitnesses : Nat := 2
+  maxDestructures : Nat := 2
   maxLocalApplications : Nat := 16
   maxLocalApplicationTerms : Nat := 4
   maxLocalApplicationArity : Nat := 2
@@ -72,27 +78,6 @@ private partial def freshIntroName (used : List Name) (index : Nat := 0) : Name 
 private def hasReplayableUserName (decl : LocalDecl) : Bool :=
   !decl.isImplementationDetail && !decl.userName.isAnonymous && !decl.userName.hasMacroScopes
 
-private def structuralActions : TacticM (List Action) := do
-  let lctx ← getLCtx
-  let used := lctx.foldl (init := []) fun names decl => decl.userName :: names
-  let introName := freshIntroName used
-  let ident := mkIdent introName
-  let mut actions := [
-    { tacticSyntax := ← `(tactic| intro $(ident):ident), text := s!"intro {introName}" },
-    { tacticSyntax := ← `(tactic| constructor), text := "constructor" },
-    { tacticSyntax := ← `(tactic| left), text := "left" },
-    { tacticSyntax := ← `(tactic| right), text := "right" }
-  ]
-  for decl in lctx do
-    if hasReplayableUserName decl then
-      let typ ← inferType decl.toExpr
-      let ident := mkIdent decl.userName
-      if ← isProp typ then
-        actions := actions.concat { tacticSyntax := ← `(tactic| cases $ident:ident), text := s!"cases {decl.userName}" }
-      else
-        actions := actions.concat { tacticSyntax := ← `(tactic| induction $ident:ident), text := s!"induction {decl.userName}" }
-  pure actions
-
 private def closingActions : TacticM (List Action) := do
   pure [
     { tacticSyntax := ← `(tactic| rfl), text := "rfl" },
@@ -114,6 +99,105 @@ private def candidateWorks (action : Action) : TacticM Bool := do
   finally
     state.restore
     setGoals goals
+
+private partial def headConstant? : Expr → Option Name
+  | .const name _ => some name
+  | .app function _ => headConstant? function
+  | .mdata _ body => headConstant? body
+  | .proj _ _ body => headConstant? body
+  | _ => none
+
+private def inductiveType (type : Expr) : MetaM Bool := do
+  match headConstant? (← whnf type) with
+  | some name => isInductive name
+  | none => return false
+
+private def destructurableType (type : Expr) : MetaM Bool := do
+  let type ← whnf type
+  return type.isAppOfArity ``And 2 || type.isAppOfArity ``Exists 2
+
+private def existentialTarget : TacticM Bool := do
+  let target ← (← getMainGoal).getType
+  return (← whnf target).isAppOfArity ``Exists 2
+
+private def occursIn (fvar : FVarId) (expression : Expr) : Bool :=
+  (expression.find? fun expression => expression.fvarId? == some fvar).isSome
+
+/-- Generate a small checked structural catalogue. Data elimination is limited to inductive
+locals, while induction generalizes at most one preceding non-propositional local. -/
+private def structuralActions (config : Config) : TacticM (List Action) := do
+  let lctx ← getLCtx
+  let declarations := lctx.foldl (init := []) fun result decl => result.concat decl
+  let target ← (← getMainGoal).getType
+  let used := declarations.map (·.userName)
+  let introName := freshIntroName used
+  let intro := mkIdent introName
+  let mut actions := [
+    { tacticSyntax := ← `(tactic| intro $intro:ident), text := s!"intro {introName}" },
+    { tacticSyntax := ← `(tactic| constructor), text := "constructor" },
+    { tacticSyntax := ← `(tactic| left), text := "left" },
+    { tacticSyntax := ← `(tactic| right), text := "right" }
+  ]
+  let mut propCases := 0
+  let mut dataCases := 0
+  let mut inductions := 0
+  let mut generalized := 0
+  let mut destructures := 0
+  for (decl, index) in declarations.zipIdx do
+    if hasReplayableUserName decl then
+      let type ← inferType decl.toExpr
+      let ident := mkIdent decl.userName
+      if ← isProp type then
+        if propCases < config.maxPropCases then
+          let action : Action := { tacticSyntax := ← `(tactic| cases $ident:ident), text := s!"cases {decl.userName}" }
+          if ← candidateWorks action then
+            actions := actions.concat action
+            propCases := propCases + 1
+        if destructures < config.maxDestructures && (← destructurableType type) then
+          let left := freshIntroName (used ++ [decl.userName]) destructures
+          let right := freshIntroName (used ++ [decl.userName, left]) (destructures + 1)
+          let action : Action := {
+            tacticSyntax := ← `(tactic| rcases $ident:ident with ⟨$(mkIdent left):ident, $(mkIdent right):ident⟩)
+            text := s!"rcases {decl.userName} with ⟨{left}, {right}⟩"
+          }
+          if ← candidateWorks action then
+            actions := actions.concat action
+            destructures := destructures + 1
+      else if ← inductiveType type then
+        if dataCases < config.maxDataCases then
+          let action : Action := { tacticSyntax := ← `(tactic| cases $ident:ident), text := s!"cases {decl.userName}" }
+          if ← candidateWorks action then
+            actions := actions.concat action
+            dataCases := dataCases + 1
+        if inductions < config.maxInductions then
+          let action : Action := { tacticSyntax := ← `(tactic| induction $ident:ident), text := s!"induction {decl.userName}" }
+          if ← candidateWorks action then
+            actions := actions.concat action
+            inductions := inductions + 1
+        if generalized < config.maxGeneralizingInductions then
+          for prior in declarations.take index do
+            if generalized < config.maxGeneralizingInductions && hasReplayableUserName prior &&
+                occursIn prior.fvarId target && !(← isProp (← inferType prior.toExpr)) then
+              let generalize := mkIdent prior.userName
+              let action : Action := {
+                tacticSyntax := ← `(tactic| induction $ident:ident generalizing $generalize:ident),
+                text := s!"induction {decl.userName} generalizing {prior.userName}"
+              }
+              if ← candidateWorks action then
+                actions := actions.concat action
+                generalized := generalized + 1
+  if (← existentialTarget) then
+    let mut witnesses := 0
+    for decl in declarations do
+      if witnesses < config.maxWitnesses && hasReplayableUserName decl then
+        let ident := mkIdent decl.userName
+        let action : Action := {
+          tacticSyntax := ← `(tactic| refine ⟨$ident:ident, ?_⟩), text := s!"refine ⟨{decl.userName}, ?_⟩"
+        }
+        if ← candidateWorks action then
+          actions := actions.concat action
+          witnesses := witnesses + 1
+  return actions
 
 private def applicationTerm (function : TSyntax `term) (arguments : List (TSyntax `term)) :
     TacticM (TSyntax `term) := do
@@ -288,13 +372,6 @@ def rewriteActions (config : Config) : TacticM (List Action) := do
             if ← candidateWorks action then actions := actions.concat action
   return actions
 
-private partial def headConstant? : Expr → Option Name
-  | .const name _ => some name
-  | .app function _ => headConstant? function
-  | .mdata _ body => headConstant? body
-  | .proj _ _ body => headConstant? body
-  | _ => none
-
 private def unfoldableDefinition (name : Name) : TacticM Bool := do
   match (← getEnv).find? name with
   | some (.defnInfo _) => return true
@@ -337,7 +414,7 @@ def unfoldActions (config : Config) : TacticM (List Action) := do
 
 /-- Build the finite, syntax-safe action catalogue for the current active goal. -/
 def catalogue (config : Config) : TacticM (List Action) := do
-  return (← structuralActions) ++ (← localActions config) ++ (← rewriteActions config) ++
+  return (← structuralActions config) ++ (← localActions config) ++ (← rewriteActions config) ++
     (← globalActions config.maxRetrievedNames) ++ (← unfoldActions config) ++ (← closingActions)
 
 private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
