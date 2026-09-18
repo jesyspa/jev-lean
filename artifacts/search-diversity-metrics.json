@@ -1,0 +1,8 @@
+{
+  "fixture": "JevLeanTests.duplicateOutcomeActions",
+  "description": "Two syntactically different split actions reach the same ordered successor state; a no-op creates a cycle.",
+  "limits": {"max_depth": 3, "max_cost": 3, "baseline_transpositions": 0, "deduplicated_transpositions": 2},
+  "baseline": {"expanded_nodes": 4, "attempted_transitions": 20, "admitted_successors": 10, "duplicate_successors": 0, "solved": 1, "fixtures": 1, "solve_rate": 1.0, "wall_ms": 37},
+  "deduplicated": {"expanded_nodes": 3, "attempted_transitions": 15, "admitted_successors": 3, "duplicate_successors": 4, "solved": 1, "fixtures": 1, "solve_rate": 1.0, "wall_ms": 16},
+  "selection": "No family quota was enabled: the observed collapse consists of identical canonical states, and a family quota could discard distinct states."
+}

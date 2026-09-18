@@ -22,6 +22,8 @@ structure Action where
   tacticSyntax : TSyntax `tactic
   text : String
   cost : Nat := 1
+  /-- Generator family, used only for deterministic search telemetry. -/
+  family : String := "ordinary"
   unfoldedConstants : List Name := []
 
 /-- A restorable search node. Goals retain Lean's active-goal order. -/
@@ -31,6 +33,8 @@ structure Node where
   path : List Action
   depth : Nat
   cost : Nat
+  /-- Stable rendering of the ordered successor goals. -/
+  fingerprint : String
 
 /-- Deterministic theorem-wide limits for a single search invocation.
 `maxHeartbeats` counts attempted catalogue transitions. -/
@@ -38,6 +42,8 @@ structure Config where
   maxDepth : Nat := 6
   maxCost : Nat := 6
   maxNodes : Nat := 64
+  /-- Bounded number of canonical states retained for duplicate suppression. -/
+  maxTranspositions : Nat := 128
   maxHeartbeats : Nat := 256
   maxJevCalls : Nat := 16
   maxWallMs : Nat := 10_000
@@ -595,9 +601,17 @@ def rank (context : RankContext) (actions : List Action) : TacticM (List Action)
   return ranked
 
 /-- Capture the current tactic state as the root of a search. -/
+def canonicalStateFingerprint (goals : List MVarId) : MetaM String := do
+  if goals.isEmpty then return "no goals"
+  return String.intercalate "\n-- next goal --\n" (← goals.mapM fun goal =>
+    return (← ppGoal goal).pretty)
+
+/-- Capture the current tactic state as the root of a search. -/
 def initialNode : TacticM Node := do
   let goals ← getUnsolvedGoals
-  return { state := ← saveState, goals, path := [], depth := 0, cost := 0 }
+  let state ← saveState
+  let fingerprint ← canonicalStateFingerprint goals
+  return { state, goals, path := [], depth := 0, cost := 0, fingerprint }
 
 /-- Restore both Lean's metavariable state and the node's ordered active goals. -/
 def Node.restore (node : Node) : TacticM Unit := do
@@ -628,12 +642,11 @@ private def expandUpTo (node : Node) (actions : List Action) (maxAttempts : Nat)
             let descendants ← getUnsolvedGoals
             setGoals (descendants ++ siblings)
             let goals ← getUnsolvedGoals
+            let state ← saveState
+            let fingerprint ← canonicalStateFingerprint goals
             successors := successors.concat {
-              state := ← saveState
-              goals
-              path := node.path.concat action
-              depth := node.depth + 1
-              cost := node.cost + action.cost
+              state, goals, path := node.path.concat action, depth := node.depth + 1
+              cost := node.cost + action.cost, fingerprint
             }
           catch _ => pure ()
     return (successors, attempts)
@@ -662,53 +675,106 @@ def withoutRepeatedUnfolds (path actions : List Action) : List Action :=
     action.unfoldedConstants.all fun name =>
       !path.any fun previous => previous.unfoldedConstants.contains name
 
-/-- Deterministic rank-guided depth-first search. Every configured budget spans the whole invocation. -/
-def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) := do
+/-- Search accounting, including duplicate outcomes suppressed after tactic execution. -/
+structure SearchMetrics where
+  expandedNodes : Nat := 0
+  attemptedTransitions : Nat := 0
+  admittedSuccessors : Nat := 0
+  duplicateSuccessors : Nat := 0
+  /-- Repeated generated action families observed before successor execution. -/
+  repeatedActionFamilies : Nat := 0
+  transpositionEntries : Nat := 0
+  elapsedMs : Nat := 0
+  deriving Repr
+
+private def familyRepeats (actions : List Action) : Nat :=
+  actions.foldl (fun (seen, repeats) action =>
+    if seen.contains action.family then (seen, repeats + 1) else (action.family :: seen, repeats)) ([], 0) |>.2
+
+private def bestCost? (table : List (String × Nat)) (fingerprint : String) : Option Nat :=
+  (table.find? fun entry => entry.1 == fingerprint).map (·.2)
+
+private def rememberState (limit : Nat) (table : List (String × Nat)) (node : Node) :
+    List (String × Nat) :=
+  if limit == 0 then [] else
+    let table := table.filter fun entry => entry.1 != node.fingerprint
+    (node.fingerprint, node.cost) :: table.take (limit - 1)
+
+/-- Deterministic rank-guided depth-first search with bounded canonical-state suppression. -/
+def searchWithMetrics (config : Config) (source : ActionSource) (ranker : ActionRanker) :
+    TacticM (Option Node × SearchMetrics) := do
   let originalGoals ← getGoals
   let original ← saveState
   let root ← initialNode
   let start ← IO.monoMsNow
-  let rec visit (frontier : List Node) (nodeFuel attempts calls : Nat) : TacticM (Option Node) := do
+  let rec visit (frontier : List Node) (table : List (String × Nat))
+      (nodeFuel attempts calls : Nat) (metrics : SearchMetrics) : TacticM (Option Node × SearchMetrics) := do
     match nodeFuel, frontier with
-    | _, [] | 0, _ => return none
+    | _, [] | 0, _ => return (none, metrics)
     | nodeFuel + 1, node :: rest =>
-      let elapsed ← IO.monoMsNow
-      if elapsed >= start + config.maxWallMs then return none
-      if node.goals.isEmpty then return some node
-      if node.depth >= config.maxDepth || node.cost >= config.maxCost then
-        visit rest nodeFuel attempts calls
-      else if attempts >= config.maxHeartbeats then
-        return none
+      if (bestCost? table node.fingerprint).any fun cost => cost < node.cost then
+        visit rest table nodeFuel attempts calls metrics
       else
-        node.restore
-        let (actions, calls) ← withMainContext do
-          let actions ← source config
-          let actions := withoutRepeatedUnfolds node.path actions
-          let context ← rankContext node
-          let helperCuts ← if config.enableLlmHelpers &&
-              helperNeedProbability context >= config.helperProbabilityThreshold then
-            helperActions config context
-          else pure []
-          let actions := helperCuts ++ actions
-          if calls >= config.maxJevCalls then
-            pure (actions, calls)
-          else
-            let now ← IO.monoMsNow
-            let context := { context with remainingWallMs := start + config.maxWallMs - now }
-            return (← ranker context actions, calls + 1)
-        let remainingAttempts := config.maxHeartbeats - attempts
-        let deadline := start + config.maxWallMs
-        let (successors, usedAttempts) ← expandUpTo node actions remainingAttempts (some deadline)
-        let successors := successors.filter fun successor =>
-          successor.depth <= config.maxDepth && successor.cost <= config.maxCost
-        if let some closed := successors.find? fun successor => successor.goals.isEmpty then
-          return some closed
-        visit (successors ++ rest) nodeFuel (attempts + usedAttempts) calls
+        let elapsed ← IO.monoMsNow
+        if elapsed >= start + config.maxWallMs then return (none, { metrics with elapsedMs := elapsed - start })
+        if node.goals.isEmpty then return (some node, { metrics with elapsedMs := elapsed - start })
+        if node.depth >= config.maxDepth || node.cost >= config.maxCost then
+          visit rest table nodeFuel attempts calls metrics
+        else if attempts >= config.maxHeartbeats then
+          return (none, { metrics with elapsedMs := elapsed - start })
+        else
+          node.restore
+          let (actions, calls) ← withMainContext do
+            let actions ← source config
+            let actions := withoutRepeatedUnfolds node.path actions
+            let context ← rankContext node
+            let helperCuts ← if config.enableLlmHelpers &&
+                helperNeedProbability context >= config.helperProbabilityThreshold then
+              helperActions config context
+            else pure []
+            let actions := helperCuts ++ actions
+            if calls >= config.maxJevCalls then
+              pure (actions, calls)
+            else
+              let now ← IO.monoMsNow
+              let context := { context with remainingWallMs := start + config.maxWallMs - now }
+              return (← ranker context actions, calls + 1)
+          let remainingAttempts := config.maxHeartbeats - attempts
+          let deadline := start + config.maxWallMs
+          let (successors, usedAttempts) ← expandUpTo node actions remainingAttempts (some deadline)
+          let successors := successors.filter fun successor =>
+            successor.depth <= config.maxDepth && successor.cost <= config.maxCost
+          let mut table := table
+          let mut admitted := []
+          let mut duplicates := 0
+          for successor in successors do
+            if (bestCost? table successor.fingerprint).any fun cost => cost <= successor.cost then
+              duplicates := duplicates + 1
+            else
+              table := rememberState config.maxTranspositions table successor
+              admitted := admitted.concat successor
+          let now ← IO.monoMsNow
+          let metrics := { metrics with
+            expandedNodes := metrics.expandedNodes + 1
+            attemptedTransitions := metrics.attemptedTransitions + usedAttempts
+            admittedSuccessors := metrics.admittedSuccessors + admitted.length
+            duplicateSuccessors := metrics.duplicateSuccessors + duplicates
+            repeatedActionFamilies := metrics.repeatedActionFamilies + familyRepeats actions
+            transpositionEntries := table.length
+            elapsedMs := now - start }
+          if let some closed := admitted.find? fun successor => successor.goals.isEmpty then
+            return (some closed, metrics)
+          visit (admitted ++ rest) table nodeFuel (attempts + usedAttempts) calls metrics
   try
-    visit [root] config.maxNodes 0 0
+    visit [root] (([(root.fingerprint, root.cost)] : List (String × Nat)).take config.maxTranspositions)
+      config.maxNodes 0 0 {}
   finally
     original.restore
     setGoals originalGoals
+
+/-- Compatibility wrapper for callers that need only the closing route. -/
+def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) :=
+  return (← searchWithMetrics config source ranker).1
 
 /-- Replay a path as ordinary tactic source on Lean's current ordered goals. -/
 def replay (path : List Action) : TacticM Unit := do

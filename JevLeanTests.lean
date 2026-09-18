@@ -135,6 +135,17 @@ private def orderedSiblingActions : ActionSource := fun _ => do
     { tacticSyntax := ← `(tactic| exact $hQ), text := "exact hQ" }
   ]
 
+private def duplicateOutcomeActions : ActionSource := fun _ => do
+  let hP := mkIdent `hP
+  let hQ := mkIdent `hQ
+  return [
+    { tacticSyntax := ← `(tactic| constructor), text := "constructor", family := "split" },
+    { tacticSyntax := ← `(tactic| apply And.intro), text := "apply And.intro", family := "apply" },
+    { tacticSyntax := ← `(tactic| skip), text := "skip", family := "noop" },
+    { tacticSyntax := ← `(tactic| exact $hP), text := "exact hP", family := "local" },
+    { tacticSyntax := ← `(tactic| exact $hQ), text := "exact hQ", family := "local" }
+  ]
+
 elab "jev_test_helper_validation" : tactic => withMainContext do
   let cuts ← helperCutActions [("P", "available cut"), ("P → P", "unchanged"),
     ("not valid Lean (", "malformed")]
@@ -414,6 +425,25 @@ elab "jev_test_transition_budget" : tactic => withMainContext do
     throwError "the scheduler did not preserve candidate order under its transition budget"
   replay budgeted.path
 
+elab "jev_test_transpositions" : tactic => withMainContext do
+  let (baseline, baselineMetrics) ← searchWithMetrics { maxDepth := 3, maxCost := 3, maxTranspositions := 0 }
+    duplicateOutcomeActions identityRanker
+  unless baseline.isSome do throwError "baseline search found no path"
+  let (first, firstMetrics) ← searchWithMetrics { maxDepth := 3, maxCost := 3, maxTranspositions := 2 }
+    duplicateOutcomeActions identityRanker
+  logInfo m!"search-diversity baseline nodes={baselineMetrics.expandedNodes} transitions={baselineMetrics.attemptedTransitions} duplicates={baselineMetrics.duplicateSuccessors} wall_ms={baselineMetrics.elapsedMs}; deduplicated nodes={firstMetrics.expandedNodes} transitions={firstMetrics.attemptedTransitions} duplicates={firstMetrics.duplicateSuccessors} wall_ms={firstMetrics.elapsedMs}"
+  let some first := first | throwError "deduplicated search found no path"
+  unless first.path.map (·.text) == ["constructor", "exact hP", "exact hQ"] do
+    throwError "duplicate outcome changed deterministic path: {first.path.map (·.text)}"
+  unless firstMetrics.duplicateSuccessors >= 2 && firstMetrics.repeatedActionFamilies > 0 &&
+      firstMetrics.transpositionEntries <= 2 do
+    throwError "transposition metrics did not record duplicate actions, cycles, and bounded memory: {repr firstMetrics}"
+  let (second, _) ← searchWithMetrics { maxDepth := 3, maxCost := 3, maxTranspositions := 2 }
+    duplicateOutcomeActions identityRanker
+  unless second.map (fun node => node.path.map (·.text)) == some (first.path.map (·.text)) do
+    throwError "canonical-state scheduling is not deterministic"
+  replay first.path
+
 elab "jev_test_failed_metavariable_branch" : tactic => withMainContext do
   let root ← initialNode
   let actions : List Action := [
@@ -455,6 +485,10 @@ example (P : Prop) : P → P := by
 /-- Failed candidates leave the original proof state available to later candidates. -/
 example (P : Prop) (h : P) : P := by
   jev_test_restoration
+
+/-- Exact duplicates, equivalent constructors, cycles, family telemetry, and bounded tables. -/
+example (P Q : Prop) (hP : P) (hQ : Q) : P ∧ Q := by
+  jev_test_transpositions
 
 /-- Intro, constructor, and exact form a genuine four-step path with sibling goals. -/
 example (P : Prop) : P → P ∧ P := by
