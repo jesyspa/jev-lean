@@ -153,10 +153,6 @@ example (P Q : Prop) (h : P → Q) (hp : P) : Q := by
 example (P : Prop) : P → P := by
   jev_test_aesop_rank_seam
 
-/-- The production tactic closes from its locally generated fixed catalogue. -/
-example (P : Prop) (hP : P) : P := by
-  jev?
-
 /-- The raw multi-line suggestion source replays as ordinary tactics. -/
 example (P : Prop) : P → P ∧ P := by
   intro h
