@@ -28,8 +28,8 @@ structure Node where
   depth : Nat
   cost : Nat
 
-/-- Deterministic limits for a single search invocation. `maxWallMs` is checked
-between transitions; individual Lean tactics and ranker processes are not preempted. -/
+/-- Deterministic theorem-wide limits for a single search invocation.
+`maxHeartbeats` counts attempted catalogue transitions. -/
 structure Config where
   maxDepth : Nat := 6
   maxCost : Nat := 6
@@ -43,6 +43,7 @@ structure RankContext where
   focusedGoal : String
   pendingGoals : List String
   path : List String
+  remainingWallMs : Nat := 0
 
 /-- A seam used by tests and alternative bounded action generators. -/
 abbrev ActionSource := TacticM (List Action)
@@ -113,7 +114,10 @@ def rank (context : RankContext) (actions : List Action) : TacticM (List Action)
     ("actions", Json.arr entries.toArray)
   ]
   try
-    let output ← IO.Process.output { cmd := "python3", args := #["-m", "jevlean.rank", "--plain"] } (some request.compress)
+    let output ← IO.Process.output {
+      cmd := "python3"
+      args := #["-m", "jevlean.rank", "--plain", "--timeout-ms", toString context.remainingWallMs]
+    } (some request.compress)
     if output.exitCode != 0 then return actions
     let indices := output.stdout.splitOn "\n" |>.filterMap fun line =>
       if line.startsWith "A" then (line.drop 1).toNat? else none
@@ -135,31 +139,46 @@ def Node.restore (node : Node) : TacticM Unit := do
   node.state.restore
   setGoals node.goals
 
+private def expandUpTo (node : Node) (actions : List Action) (maxAttempts : Nat)
+    (deadline? : Option Nat := none) : TacticM (List Node × Nat) := do
+  let originalGoals ← getGoals
+  let original ← saveState
+  let mut successors : List Node := []
+  let mut attempts := 0
+  try
+    for action in actions.take maxAttempts do
+      let now ← IO.monoMsNow
+      if deadline?.any fun deadline => now >= deadline then
+        pure ()
+      else
+        attempts := attempts + 1
+        node.restore
+        match node.goals with
+        | [] => pure ()
+        | goal :: siblings =>
+          setGoals [goal]
+          try
+            withMainContext do
+              Term.withoutErrToSorry <| withoutRecover do evalTactic action.tacticSyntax
+            let descendants ← getUnsolvedGoals
+            setGoals (descendants ++ siblings)
+            let goals ← getUnsolvedGoals
+            successors := successors.concat {
+              state := ← saveState
+              goals
+              path := node.path.concat action
+              depth := node.depth + 1
+              cost := node.cost + action.cost
+            }
+          catch _ => pure ()
+    return (successors, attempts)
+  finally
+    original.restore
+    setGoals originalGoals
+
 /-- Try every action on only the first active goal, then reattach untouched siblings. -/
 def expand (node : Node) (actions : List Action) : TacticM (List Node) := do
-  let original ← saveState
-  let mut successors := []
-  for action in actions do
-    node.restore
-    match node.goals with
-    | [] => pure ()
-    | goal :: siblings =>
-      setGoals [goal]
-      try
-        withMainContext do evalTactic action.tacticSyntax
-        let descendants ← getUnsolvedGoals
-        setGoals (descendants ++ siblings)
-        let goals ← getUnsolvedGoals
-        successors := successors.concat {
-          state := ← saveState
-          goals
-          path := node.path.concat action
-          depth := node.depth + 1
-          cost := node.cost + action.cost
-        }
-      catch _ => pure ()
-  original.restore
-  return successors
+  return (← expandUpTo node actions actions.length).1
 
 /-- Render a node's focused goal, ordered siblings, and preceding actions for ranking. -/
 def rankContext (node : Node) : TacticM RankContext := do
@@ -172,20 +191,23 @@ def rankContext (node : Node) : TacticM RankContext := do
       path := node.path.map (·.text)
     }
 
-/-- Deterministic FIFO frontier search. Budgets are checked before each expansion. -/
+/-- Deterministic FIFO frontier search. Every configured budget spans the whole invocation. -/
 def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) := do
+  let originalGoals ← getGoals
   let original ← saveState
   let root ← initialNode
   let start ← IO.monoMsNow
-  let rec visit (frontier : List Node) (fuel calls : Nat) : TacticM (Option Node) := do
-    match fuel, frontier with
+  let rec visit (frontier : List Node) (nodeFuel attempts calls : Nat) : TacticM (Option Node) := do
+    match nodeFuel, frontier with
     | _, [] | 0, _ => return none
-    | fuel + 1, node :: rest =>
+    | nodeFuel + 1, node :: rest =>
       let elapsed ← IO.monoMsNow
-      if elapsed - start >= config.maxWallMs then return none
+      if elapsed >= start + config.maxWallMs then return none
       if node.goals.isEmpty then return some node
       if node.depth >= config.maxDepth || node.cost >= config.maxCost then
-        visit rest fuel calls
+        visit rest nodeFuel attempts calls
+      else if attempts >= config.maxHeartbeats then
+        return none
       else
         node.restore
         let (actions, calls) ← withMainContext do
@@ -193,17 +215,23 @@ def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker)
           if calls >= config.maxJevCalls then
             pure (actions, calls)
           else
-            return (← ranker (← rankContext node) actions, calls + 1)
-        let successors ← expand node actions
+            let context ← rankContext node
+            let now ← IO.monoMsNow
+            let context := { context with remainingWallMs := start + config.maxWallMs - now }
+            return (← ranker context actions, calls + 1)
+        let remainingAttempts := config.maxHeartbeats - attempts
+        let deadline := start + config.maxWallMs
+        let (successors, usedAttempts) ← expandUpTo node actions remainingAttempts (some deadline)
         let successors := successors.filter fun successor =>
           successor.depth <= config.maxDepth && successor.cost <= config.maxCost
         if let some closed := successors.find? fun successor => successor.goals.isEmpty then
           return some closed
-        visit (rest ++ successors) fuel calls
+        visit (rest ++ successors) nodeFuel (attempts + usedAttempts) calls
   try
-    visit [root] (min config.maxNodes config.maxHeartbeats) 0
+    visit [root] config.maxNodes 0 0
   finally
     original.restore
+    setGoals originalGoals
 
 /-- Replay a path as ordinary tactic source on Lean's current ordered goals. -/
 def replay (path : List Action) : TacticM Unit := do
