@@ -31,6 +31,18 @@ lemma sipserAcceptance_from (n : Nat) (h : n = 0) : SipserAcceptance n := by
   subst n
   rfl
 
+def SipserAccepted (n : Nat) : Prop := n = 0
+
+def SipserClosure (p : Prop) : Prop := p ∧ True
+
+@[simp] lemma sipserClosure_normalize (p : Prop) : SipserClosure p = p := by
+  simp [SipserClosure]
+
+private def rewriteThenCloseActions : ActionSource := fun config => do
+  return (← rewriteActions config) ++ [
+    { tacticSyntax := ← `(tactic| rfl), text := "rfl" }
+  ]
+
 private def aesopFirst : ActionRanker := fun _ actions =>
   pure <| actions.mergeSort fun left right =>
     left.text.startsWith "aesop" && !right.text.startsWith "aesop"
@@ -111,6 +123,37 @@ elab "jev_test_global_apply_retrieval" : tactic => withMainContext do
     | throwError "retrieval apply search found no path"
   unless node.path.map (·.text) == ["apply sipserAcceptance_from", "exact h"] do
     throwError "retrieval did not retain a type-correct global apply candidate"
+  replay node.path
+
+elab "jev_test_rewrite_acceptance" : tactic => withMainContext do
+  let config := {
+    maxDepth := 2, maxCost := 2, maxRewriteCandidates := 2,
+    maxRewriteSimpNames := 100_000, maxRewriteMs := 10_000
+  }
+  let actions ← rewriteActions config
+  unless actions.map (·.text) == ["rw [h]", "rw [← h]"] do
+    throwError "acceptance equality did not produce deterministic rewrites: {actions.map (·.text)}"
+  let some node ← searchWith config rewriteThenCloseActions identityRanker
+    | throwError "acceptance rewrite search found no path"
+  unless node.path.map (·.text) == ["rw [h]"] do
+    throwError "acceptance rewrite path is not replayable: {node.path.map (·.text)}"
+  replay node.path
+
+elab "jev_test_rewrite_closure" : tactic => withMainContext do
+  let config := {
+    maxDepth := 3, maxCost := 3, maxWallMs := 120_000, maxRewriteCandidates := 12,
+    maxRewriteSimpLemmas := 4, maxRewriteSimpNames := 100_000, maxRewriteMs := 120_000
+  }
+  let actions ← rewriteActions config
+  unless actions.any fun action => action.text == "rw [h]" do
+    throwError "closure equality did not produce a forward rewrite"
+  unless actions.any fun action => action.text == "simp only [sipserClosure_normalize]" do
+    throwError "closure normalization did not produce a matched simp-only action: {actions.map (·.text)}"
+  let some node ← searchWith config rewriteThenCloseActions identityRanker
+    | throwError "closure rewrite search found no path"
+  unless node.path.map (·.text) ==
+      ["rw [h]", "simp only [sipserClosure_normalize]"] do
+    throwError "closure normalization path is not replayable: {node.path.map (·.text)}"
   replay node.path
 
 elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
@@ -232,6 +275,14 @@ example : SipserAcceptance 0 := by
 /-- Retrieved global applications open ordinary local proof obligations. -/
 example (n : Nat) (h : n = 0) : SipserAcceptance n := by
   jev_test_global_apply_retrieval
+
+/-- Generated equality rewrites solve the acceptance shape and replay from the root state. -/
+example (n : Nat) (h : n = 0) : SipserAccepted n = SipserAccepted 0 := by
+  jev_test_rewrite_acceptance
+
+/-- Generated simp-only normalization follows an equality rewrite and replays from the root state. -/
+example (n : Nat) (h : n = 0) : SipserClosure (n = 0) := by
+  jev_test_rewrite_closure
 
 /-- Tests can force aesop first and do not assume a structural action wins ranking. -/
 example (P : Prop) : P → P := by

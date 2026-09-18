@@ -7,6 +7,7 @@ Lean/Mathlib environment used to verify candidate actions.
 
 import Aesop
 import Mathlib.Tactic.TryThis
+import Mathlib.Lean.Meta.Simp
 import Std.Internal.Async.TCP
 import Std.Internal.Async.Timer
 
@@ -40,6 +41,10 @@ structure Config where
   maxJevCalls : Nat := 16
   maxWallMs : Nat := 10_000
   maxRetrievedNames : Nat := 24
+  maxRewriteCandidates : Nat := 12
+  maxRewriteSimpLemmas : Nat := 4
+  maxRewriteSimpNames : Nat := 256
+  maxRewriteMs : Nat := 100
 
 /-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
 structure RankContext where
@@ -161,9 +166,71 @@ def globalActions (maxNames : Nat) : TacticM (List Action) := do
     if ← candidateWorks applyAction then actions := actions.concat applyAction
   return actions
 
+private def isEquality (type : Expr) : MetaM Bool := do
+  let type ← whnf type
+  return type.isAppOfArity ``Eq 3 || type.isAppOfArity ``Iff 2
+
+private partial def scoredSimpNames (names query : List Name) (deadline remaining : Nat) :
+    TacticM (List (Nat × Name)) := do
+  if remaining == 0 || (← IO.monoMsNow) >= deadline then
+    return []
+  match names with
+  | [] => return []
+  | name :: names =>
+    let score? := (← getEnv).find? name |>.map fun info =>
+      let textualMatch := query.any fun constant =>
+        let text := constant.toString
+        text.length > 1 && name.toString.contains (text.drop 1)
+      retrievalScore query info.type + if textualMatch then 100 else 0
+    let rest ← scoredSimpNames names query deadline (remaining - 1)
+    return match score? with
+      | some score => if score == 0 then rest else (score, name) :: rest
+      | none => rest
+
+def rewriteActions (config : Config) : TacticM (List Action) := do
+  let deadline ← IO.monoMsNow.map (· + config.maxRewriteMs)
+  let timedOut : TacticM Bool := return (← IO.monoMsNow) >= deadline
+  let mut actions := []
+  let lctx ← getLCtx
+  for decl in lctx do
+    if hasReplayableUserName decl && (← isEquality decl.type) then
+      let ident := mkIdent decl.userName
+      let forward : Action := {
+        tacticSyntax := ← `(tactic| rw [$ident:ident]), text := s!"rw [{decl.userName}]"
+      }
+      unless actions.length >= config.maxRewriteCandidates || (← timedOut) do
+        if ← candidateWorks forward then actions := actions.concat forward
+      let backward : Action := {
+        tacticSyntax := ← `(tactic| rw [← $ident:ident]), text := s!"rw [← {decl.userName}]"
+      }
+      unless actions.length >= config.maxRewriteCandidates || (← timedOut) do
+        if ← candidateWorks backward then actions := actions.concat backward
+  unless actions.length >= config.maxRewriteCandidates || (← timedOut) do
+    let goal ← getMainGoal
+    let target ← goal.getType
+    let query := (constantsIn target).filter fun name =>
+      name != ``Eq && name != ``Iff && name != ``True && name != ``Nat
+    let simpNames ← Lean.Meta.getAllSimpDecls `simp
+    let scored ← scoredSimpNames simpNames.reverse query deadline config.maxRewriteSimpNames
+    let scored := scored.mergeSort fun left right =>
+      left.1 > right.1 || left.1 == right.1 && left.2.toString < right.2.toString
+    for (_, name) in scored.take config.maxRewriteSimpLemmas do
+      unless actions.length >= config.maxRewriteCandidates || (← timedOut) do
+        let ident := mkIdent name
+        let witness : Action := {
+          tacticSyntax := ← `(tactic| rw [$ident:ident]), text := s!"rw [{name}]"
+        }
+        if ← candidateWorks witness then
+          let action : Action := {
+            tacticSyntax := ← `(tactic| simp only [$ident:ident]), text := s!"simp only [{name}]"
+          }
+          unless actions.length >= config.maxRewriteCandidates || (← timedOut) do
+            if ← candidateWorks action then actions := actions.concat action
+  return actions
+
 /-- Build the finite, syntax-safe action catalogue for the current active goal. -/
 def catalogue (config : Config) : TacticM (List Action) := do
-  return (← structuralActions) ++ (← localActions) ++
+  return (← structuralActions) ++ (← localActions) ++ (← rewriteActions config) ++
     (← globalActions config.maxRetrievedNames) ++ (← closingActions)
 
 private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
