@@ -16,6 +16,11 @@ private def aesopFirst : ActionRanker := fun _ actions =>
 
 private def reverseRanker : ActionRanker := fun _ actions => pure actions.reverse
 
+private def disjunctionActions : ActionSource := do
+  return (← catalogue).filter fun action =>
+    action.text.startsWith "intro " || action.text.startsWith "cases " ||
+      action.text == "left" || action.text == "right" || action.text == "assumption"
+
 private def inductionActions : ActionSource := do
   let xs := mkIdent `xs
   return [
@@ -61,6 +66,14 @@ elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
     | throwError "aesop-first search found no path"
   unless node.path.head?.map (·.text.startsWith "aesop") == some true do
     throwError "injected rank order was not respected"
+  replay node.path
+
+elab "jev_test_custom_disjunction" : tactic => withMainContext do
+  let some node ← searchWith {} disjunctionActions identityRanker
+    | throwError "custom disjunction search found no path"
+  unless node.path.map (·.text) ==
+      ["intro jev_h", "cases jev_h", "right", "assumption", "left", "assumption"] do
+    throwError "unexpected custom disjunction path: {node.path.map (·.text)}"
   replay node.path
 
 elab "jev_test_nonclosing_retained" : tactic => withMainContext do
@@ -127,6 +140,14 @@ example (P : Prop) (h : P) : P := by
 /-- Intro, constructor, and exact form a genuine four-step path with sibling goals. -/
 example (P : Prop) : P → P ∧ P := by
   jev_test_structural_path
+
+private inductive TestDisj (P Q : Prop) : Prop where
+  | inl (p : P)
+  | inr (q : Q)
+
+/-- Constructor case binders replay through stable tactics. -/
+example : TestDisj P Q → TestDisj Q P := by
+  jev_test_custom_disjunction
 
 /-- A successful structural transition is retained even though it leaves a goal. -/
 example (P : Prop) : P → P := by

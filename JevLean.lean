@@ -57,6 +57,10 @@ private partial def freshIntroName (used : List Name) (index : Nat := 0) : Name 
   let candidate := Name.mkSimple <| if index == 0 then "jev_h" else s!"jev_h{index}"
   if used.contains candidate then freshIntroName used (index + 1) else candidate
 
+/-- Locals introduced by replayed tactics have fresh macro scopes and cannot be named in later syntax. -/
+private def hasReplayableUserName (decl : LocalDecl) : Bool :=
+  !decl.isImplementationDetail && !decl.userName.isAnonymous && !decl.userName.hasMacroScopes
+
 private def structuralActions : TacticM (List Action) := do
   let lctx ← getLCtx
   let used := lctx.foldl (init := []) fun names decl => decl.userName :: names
@@ -69,7 +73,7 @@ private def structuralActions : TacticM (List Action) := do
     { tacticSyntax := ← `(tactic| right), text := "right" }
   ]
   for decl in lctx do
-    if !decl.isImplementationDetail && !decl.userName.isAnonymous then
+    if hasReplayableUserName decl then
       let typ ← inferType decl.toExpr
       let ident := mkIdent decl.userName
       if ← isProp typ then
@@ -91,14 +95,14 @@ private def closingActions : TacticM (List Action) := do
 private def localActions : TacticM (List Action) := do
   let lctx ← getLCtx
   lctx.foldlM (init := []) fun actions decl => do
-    if decl.isImplementationDetail || decl.userName.isAnonymous then
-      pure actions
-    else
+    if hasReplayableUserName decl then
       let ident := mkIdent decl.userName
       pure (actions ++ [
         { tacticSyntax := ← `(tactic| exact $ident), text := s!"exact {decl.userName}" },
         { tacticSyntax := ← `(tactic| apply $ident), text := s!"apply {decl.userName}" }
       ])
+    else
+      pure actions
 
 /-- Build the finite, syntax-safe action catalogue for the current active goal. -/
 def catalogue : TacticM (List Action) := do
@@ -263,7 +267,7 @@ def rankContext (node : Node) : TacticM RankContext := do
       path := node.path.map (·.text)
     }
 
-/-- Deterministic FIFO frontier search. Every configured budget spans the whole invocation. -/
+/-- Deterministic rank-guided depth-first search. Every configured budget spans the whole invocation. -/
 def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker) : TacticM (Option Node) := do
   let originalGoals ← getGoals
   let original ← saveState
@@ -298,7 +302,7 @@ def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker)
           successor.depth <= config.maxDepth && successor.cost <= config.maxCost
         if let some closed := successors.find? fun successor => successor.goals.isEmpty then
           return some closed
-        visit (rest ++ successors) nodeFuel (attempts + usedAttempts) calls
+        visit (successors ++ rest) nodeFuel (attempts + usedAttempts) calls
   try
     visit [root] config.maxNodes 0 0
   finally
