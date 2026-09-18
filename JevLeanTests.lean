@@ -6,7 +6,8 @@ open JevLean.Search
 private def controlledActions : ActionSource := fun _ => do
   return (← catalogue { maxRetrievedNames := 0 }).filter fun action =>
     action.text.startsWith "intro " || action.text == "constructor" ||
-      action.text.startsWith "exact " || action.text.startsWith "apply "
+      (action.text.startsWith "exact " && !(action.text.drop 6).contains ' ') ||
+      (action.text.startsWith "apply " && !(action.text.drop 6).contains ' ')
 
 private def identityRanker : ActionRanker := fun _ actions => pure actions
 
@@ -73,6 +74,15 @@ private def disjunctionActions : ActionSource := fun _ => do
   return (← catalogue { maxRetrievedNames := 0 }).filter fun action =>
     action.text.startsWith "intro " || action.text.startsWith "cases " ||
       action.text == "left" || action.text == "right" || action.text == "assumption"
+
+private def localTransformationActions : ActionSource := fun config => do
+  return (← catalogue { config with maxRetrievedNames := 0 }).filter fun action =>
+    action.text == "exact (h z).symm" || action.text == "apply (h z).mp" ||
+      action.text == "exact (h z).1" || action.text == "exact hp"
+
+private def localApplicationText (text : String) : Bool :=
+  text.startsWith "exact h " || text.startsWith "apply h " ||
+    text.startsWith "exact (h " || text.startsWith "apply (h "
 
 private def inductionActions : ActionSource := fun _ => do
   let xs := mkIdent `xs
@@ -175,6 +185,53 @@ elab "jev_test_rewrite_closure" : tactic => withMainContext do
       ["rw [h]", "simp only [sipserClosure_normalize]"] do
     throwError "closure normalization path is not replayable: {node.path.map (·.text)}"
   replay node.path
+
+elab "jev_test_local_symmetry" : tactic => withMainContext do
+  let actions ← catalogue { maxRetrievedNames := 0 }
+  unless actions.any (·.text == "exact (h z).symm") do
+    throwError "local equality symmetry application was not generated: {actions.map (·.text)}"
+  let some node ← searchWith { maxDepth := 1, maxCost := 1, maxRetrievedNames := 0 }
+      localTransformationActions identityRanker
+    | throwError "local equality symmetry search found no path"
+  unless node.path.map (·.text) == ["exact (h z).symm"] do
+    throwError "local equality symmetry path is not readable and replayable: {node.path.map (·.text)}"
+  replay node.path
+
+elab "jev_test_local_equivalence" : tactic => withMainContext do
+  let actions ← catalogue { maxRetrievedNames := 0 }
+  unless actions.any (·.text == "apply (h z).mp") do
+    throwError "local equivalence transformation was not generated: {actions.map (·.text)}"
+  let some node ← searchWith { maxDepth := 2, maxCost := 2, maxRetrievedNames := 0 }
+      localTransformationActions identityRanker
+    | throwError "local equivalence transformation search found no path"
+  unless node.path.map (·.text) == ["apply (h z).mp", "exact hp"] do
+    throwError "local equivalence path is not readable and replayable: {node.path.map (·.text)}"
+  replay node.path
+
+elab "jev_test_local_projection" : tactic => withMainContext do
+  let actions ← catalogue { maxRetrievedNames := 0 }
+  unless actions.any (·.text == "exact (h z).1") do
+    throwError "local conjunction projection was not generated: {actions.map (·.text)}"
+  let some node ← searchWith { maxDepth := 1, maxCost := 1, maxRetrievedNames := 0 }
+      localTransformationActions identityRanker
+    | throwError "local conjunction projection search found no path"
+  unless node.path.map (·.text) == ["exact (h z).1"] do
+    throwError "local conjunction projection path is not readable and replayable: {node.path.map (·.text)}"
+  replay node.path
+
+elab "jev_test_local_application_bound" : tactic => withMainContext do
+  let config := {
+    maxRetrievedNames := 0, maxLocalApplications := 3,
+    maxLocalApplicationTerms := 3, maxLocalApplicationArity := 2
+  }
+  let actions ← catalogue config
+  let specialized := actions.filter fun action => localApplicationText action.text
+  unless specialized.length <= config.maxLocalApplications do
+    throwError "local application catalogue exceeded its bound: {specialized.map (·.text)}"
+  let repeated ← catalogue config
+  unless specialized.map (·.text) == (repeated.filter fun action => localApplicationText action.text).map (·.text) do
+    throwError "local application catalogue was not deterministic"
+  evalTactic (← `(tactic| exact rfl))
 
 elab "jev_test_unfold_goal_head" : tactic => withMainContext do
   let config := { maxDepth := 2, maxCost := 2, maxUnfoldCandidates := 1 }
@@ -346,6 +403,23 @@ example (n : Nat) (h : n = 0) : SipserAccepted n = SipserAccepted 0 := by
 /-- Generated simp-only normalization follows an equality rewrite and replays from the root state. -/
 example (n : Nat) (h : n = 0) : SipserClosure (n = 0) := by
   jev_test_rewrite_closure
+
+/-- Universally quantified local equalities expose a readable symmetric application. -/
+example (f : Nat → Nat) (h : ∀ z, z = f z) (z : Nat) : f z = z := by
+  jev_test_local_symmetry
+
+/-- Locally supplied equivalences expose their forward transformation. -/
+example (P Q : Nat → Prop) (h : ∀ z, P z ↔ Q z) (z : Nat) (hp : P z) : Q z := by
+  jev_test_local_equivalence
+
+/-- Local applications expose common projections. -/
+example (P Q : Nat → Prop) (h : ∀ z, P z ∧ Q z) (z : Nat) : P z := by
+  jev_test_local_projection
+
+/-- Local application generation is bounded despite multiple terms and binders. -/
+example (a _b _c _d : Nat) (h : ∀ x y : Nat, x = x → y = y → y = y) :
+    h a a rfl rfl = h a a rfl rfl := by
+  jev_test_local_application_bound
 
 /-- Goal-head definitions receive bounded replayable unfolding candidates. -/
 example (xs : List Nat) : Doubled.length_R xs := by

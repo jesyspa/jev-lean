@@ -47,6 +47,9 @@ structure Config where
   maxRewriteSimpNames : Nat := 256
   maxRewriteMs : Nat := 100
   maxUnfoldCandidates : Nat := 4
+  maxLocalApplications : Nat := 16
+  maxLocalApplicationTerms : Nat := 4
+  maxLocalApplicationArity : Nat := 2
 
 /-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
 structure RankContext where
@@ -100,9 +103,75 @@ private def closingActions : TacticM (List Action) := do
       text := "aesop (config := { terminal := true, maxRuleApplications := 32 })" }
   ]
 
-private def localActions : TacticM (List Action) := do
+private def candidateWorks (action : Action) : TacticM Bool := do
+  let goals ← getGoals
+  let state ← saveState
+  try
+    withMainContext do
+      Term.withoutErrToSorry <| withoutRecover do evalTactic action.tacticSyntax
+    return true
+  catch _ => return false
+  finally
+    state.restore
+    setGoals goals
+
+private def applicationTerm (function : TSyntax `term) (arguments : List (TSyntax `term)) :
+    TacticM (TSyntax `term) := do
+  match arguments with
+  | [] => pure function
+  | argument :: arguments =>
+    let function ← applicationTerm function arguments
+    `(term| $function $argument)
+
+private def argumentLists {α : Type} (terms : List α) (arity : Nat) : List (List α) :=
+  match arity with
+  | 0 => [[]]
+  | arity + 1 =>
+    (argumentLists terms arity).flatMap fun arguments =>
+      terms.map fun term => arguments ++ [term]
+
+private def localApplicationActions (config : Config) : TacticM (List Action) := do
+  if config.maxLocalApplications == 0 || config.maxLocalApplicationTerms == 0 ||
+      config.maxLocalApplicationArity == 0 then
+    return []
   let lctx ← getLCtx
-  lctx.foldlM (init := []) fun actions decl => do
+  let terms : List ((TSyntax `term) × String) := lctx.foldl (init := []) fun terms decl =>
+    if hasReplayableUserName decl then terms.concat (mkIdent decl.userName, decl.userName.toString) else terms
+  let terms := terms.take config.maxLocalApplicationTerms
+  let mut actions := []
+  for decl in lctx do
+    unless actions.length >= config.maxLocalApplications do
+      if hasReplayableUserName decl && (← whnf decl.type).isForall then
+        let function := mkIdent decl.userName
+        for arity in [:config.maxLocalApplicationArity] do
+          unless actions.length >= config.maxLocalApplications do
+            for arguments in argumentLists terms (arity + 1) do
+              unless actions.length >= config.maxLocalApplications do
+                let term ← applicationTerm function (arguments.map (·.1))
+                let application := s!"{decl.userName} {String.intercalate " " <| arguments.map (·.2)}"
+                let variants ← #[
+                  (term, application),
+                  (← `(term| ($term).symm), s!"({application}).symm"),
+                  (← `(term| ($term).1), s!"({application}).1"),
+                  (← `(term| ($term).2), s!"({application}).2"),
+                  (← `(term| ($term).mp), s!"({application}).mp"),
+                  (← `(term| ($term).mpr), s!"({application}).mpr")
+                ].toList.mapM fun (term, text) => do
+                  let exact : Action := {
+                    tacticSyntax := ← `(tactic| exact $term), text := s!"exact {text}"
+                  }
+                  let apply : Action := {
+                    tacticSyntax := ← `(tactic| apply $term), text := s!"apply {text}"
+                  }
+                  pure [exact, apply]
+                for variant in variants.flatten do
+                  unless actions.length >= config.maxLocalApplications do
+                    if ← candidateWorks variant then actions := actions.concat variant
+  return actions
+
+private def localActions (config : Config) : TacticM (List Action) := do
+  let lctx ← getLCtx
+  let basic ← lctx.foldlM (init := []) fun actions decl => do
     if hasReplayableUserName decl then
       let ident := mkIdent decl.userName
       pure (actions ++ [
@@ -111,6 +180,7 @@ private def localActions : TacticM (List Action) := do
       ])
     else
       pure actions
+  return basic ++ (← localApplicationActions config)
 
 private partial def constantsIn (expr : Expr) (constants : List Name := []) : List Name :=
   match expr with
@@ -127,18 +197,6 @@ private partial def forallBody : Expr → Expr
 
 private def retrievalScore (query : List Name) (type : Expr) : Nat :=
   (constantsIn (forallBody type)).countP query.contains
-
-private def candidateWorks (action : Action) : TacticM Bool := do
-  let goals ← getGoals
-  let state ← saveState
-  try
-    withMainContext do
-      Term.withoutErrToSorry <| withoutRecover do evalTactic action.tacticSyntax
-    return true
-  catch _ => return false
-  finally
-    state.restore
-    setGoals goals
 
 /-- Retrieve globally named declarations related to the focused goal, then retain only candidates
 that Lean can elaborate and execute in the current tactic state. -/
@@ -279,7 +337,7 @@ def unfoldActions (config : Config) : TacticM (List Action) := do
 
 /-- Build the finite, syntax-safe action catalogue for the current active goal. -/
 def catalogue (config : Config) : TacticM (List Action) := do
-  return (← structuralActions) ++ (← localActions) ++ (← rewriteActions config) ++
+  return (← structuralActions) ++ (← localActions config) ++ (← rewriteActions config) ++
     (← globalActions config.maxRetrievedNames) ++ (← unfoldActions config) ++ (← closingActions)
 
 private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
