@@ -36,7 +36,7 @@ The default practical ledger is depth 6, path cost 6, 64 visited frontier nodes,
 
 The strongest current evidence is next-action ranking, not autonomous proof search. None of these studies measures end-to-end theorem solve rate, Mathlib-scale retrieval, or LLM-generated helper success.
 
-The external end-to-end adapter, frozen 50-task LeanDojo Benchmark 4 pilot, leakage checks, and exact toolchain blocker are documented in [BENCHMARK4.md](BENCHMARK4.md).
+The external end-to-end adapter, frozen 50-task LeanDojo Benchmark 4 pilot, leakage checks, and exact toolchain blocker are documented in [BENCHMARK4.md](BENCHMARK4.md). [EXTERNAL_BENCHMARKS.md](EXTERNAL_BENCHMARKS.md) compares current Lean 4 alternatives and recommends the next pilot and standard comparison.
 
 Detailed methods and caveats:
 
