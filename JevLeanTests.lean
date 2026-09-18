@@ -135,6 +135,19 @@ private def orderedSiblingActions : ActionSource := fun _ => do
     { tacticSyntax := ← `(tactic| exact $hQ), text := "exact hQ" }
   ]
 
+elab "jev_test_helper_validation" : tactic => withMainContext do
+  let cuts ← helperCutActions [("P", "available cut"), ("P → P", "unchanged"),
+    ("not valid Lean (", "malformed")]
+  unless cuts.length == 1 && cuts.head?.any (·.text.startsWith "helper cut (P)") do
+    throwError "helper validation admitted malformed, circular, unchanged, or unavailable proposals: {cuts.map (·.text)}"
+  let root ← initialNode
+  let successors ← expand root cuts
+  match successors with
+  | [successor] => unless successor.goals.length == 2 do
+      throwError "a helper cut did not create the helper proof and continuation obligations"
+  | _ => throwError "a helper cut did not produce exactly one successor"
+  evalTactic (← `(tactic| exact fun h => h))
+
 elab "jev_test_restoration" : tactic => withMainContext do
   let root ← initialNode
   let _ ← expand root [{ tacticSyntax := ← `(tactic| skip), text := "skip" }]
@@ -434,6 +447,10 @@ elab "jev_test_induction_replay" : tactic => withMainContext do
   unless suggestion ==
       "induction xs\n  · simp [JevLean.tally, *]\n  · simp [JevLean.tally, *]\n    omega" do
     throwError "unexpected formatted suggestion:\n{suggestion}"
+
+/-- Helper propositions become verified cuts rather than trusted declarations. -/
+example (P : Prop) : P → P := by
+  jev_test_helper_validation
 
 /-- Failed candidates leave the original proof state available to later candidates. -/
 example (P : Prop) (h : P) : P := by

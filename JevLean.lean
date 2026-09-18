@@ -56,6 +56,16 @@ structure Config where
   maxLocalApplications : Nat := 16
   maxLocalApplicationTerms : Nat := 4
   maxLocalApplicationArity : Nat := 2
+  /-- Enable the bounded helper-state meta-action. It is disabled by default. -/
+  enableLlmHelpers : Bool := false
+  /-- A deterministic state estimate must reach this percentage before generation. -/
+  helperProbabilityThreshold : Nat := 85
+  /-- One meta-action request returns no more than this many raw propositions. -/
+  maxHelperProposals : Nat := 4
+  /-- At most this many Lean-checked helper cuts enter the frontier. -/
+  maxAdmittedHelpers : Nat := 2
+  /-- Helper requests share the invocation wall budget and have this independent cap. -/
+  maxHelperMs : Nat := 2_000
 
 /-- The concrete state supplied to a ranker without exposing mutable tactic state. -/
 structure RankContext where
@@ -418,6 +428,21 @@ def catalogue (config : Config) : TacticM (List Action) := do
     (← globalActions config.maxRetrievedNames) ++ (← unfoldActions config) ++ (← closingActions)
 
 private initialize rankCache : IO.Ref (Std.HashMap String (List Nat)) ← IO.mkRef {}
+private initialize helperCache : IO.Ref (Std.HashMap String (List (String × String))) ← IO.mkRef {}
+
+/-- A provider supplies proposition text and a rationale; Lean remains the checker. -/
+abbrev HelperSource := RankContext → Nat → Nat → TacticM (List (String × String))
+
+/-- Cheap deterministic gate for the optional meta-action. Complex quantified or inductive-shaped
+states are more likely to benefit from a cut than atomic closing goals. -/
+def helperNeedProbability (context : RankContext) : Nat :=
+  min 100 <| 20 + 20 * context.pendingGoals.length +
+    (if context.focusedGoal.contains "∀" || context.focusedGoal.contains "∃" then 55 else 0) +
+    (if context.focusedGoal.contains "→" then 20 else 0)
+
+/-- Canonical identity deliberately excludes the path: equivalent revisits share a provider result. -/
+def canonicalStateIdentity (context : RankContext) : String :=
+  context.focusedGoal ++ "\n-- siblings --\n" ++ String.intercalate "\n" context.pendingGoals
 
 private def applyRanking? (actions : List Action) (indices : List Nat) : Option (List Action) := do
   if indices.length != actions.length || indices.eraseDups.length != actions.length ||
@@ -487,6 +512,61 @@ private def brokerRanking (request : Json) (deadline : Nat) : IO (List Nat) := d
     let some index := if identifier.startsWith "A" then (identifier.drop 1).toNat? else none |
       throw <| IO.Error.userError "rank broker returned invalid action identifier"
     return index
+
+private def helperBrokerAddress : IO Std.Net.SocketAddress := do
+  let port := match (← IO.getEnv "JEV_HELPER_BROKER_PORT").bind String.toNat? with
+    | some port => port | none => 8766
+  if port == 0 || port > 65535 then throw <| IO.Error.userError "JEV_HELPER_BROKER_PORT must be between 1 and 65535"
+  return .v4 { addr := Std.Net.IPv4Addr.ofParts 127 0 0 1, port := port.toUInt16 }
+
+private def providerHelpers (context : RankContext) (maximum timeout : Nat) : TacticM (List (String × String)) := do
+  let key := canonicalStateIdentity context
+  if let some cached := (← helperCache.get).get? key then return cached
+  let deadline ← IO.monoMsNow.map (· + timeout)
+  let request := Json.mkObj [("state", Json.mkObj [("focused_goal", Json.str context.focusedGoal), ("canonical_state", Json.str key)]), ("max_proposals", Json.num maximum), ("deadline_ms", Json.num timeout)]
+  let result ← try
+    let socket ← Std.Internal.IO.Async.TCP.Socket.Client.mk
+    beforeDeadline (socket.connect (← helperBrokerAddress)) deadline
+    beforeDeadline (socket.send (request.compress.toUTF8 ++ "\n".toUTF8)) deadline
+    let text ← receiveBrokerFrame socket deadline
+    let json ← match Json.parse text with | .ok json => pure json | .error error => throwError "invalid helper response: {error}"
+    let object ← match json.getObj? with | .ok object => pure object | .error _ => throwError "helper response is not an object"
+    let ok := match object.get? "ok" with | some value => value.getBool?.toOption.getD false | none => false
+    unless ok do throwError "helper provider rejected request"
+    let proposals ← match object.get? "proposals" with
+      | some value => match value.getArr? with | .ok values => pure values.toList | .error _ => throwError "helper response has no proposals"
+      | none => throwError "helper response has no proposals"
+    proposals.take maximum |>.filterMapM fun proposal => do
+      let proposalObject := proposal.getObj?.toOption
+      let proposition := proposalObject.bind fun o => (o.get? "proposition").bind fun x => x.getStr?.toOption
+      let rationale := proposalObject.bind fun o => (o.get? "rationale").bind fun x => x.getStr?.toOption
+      return match proposition, rationale with | some p, some r => some (p, r) | _, _ => none
+  catch _ => pure []
+  helperCache.modify fun cache => (if cache.size >= 1024 then {} else cache).insert key result
+  return result
+
+/-- Elaborate provider text into checked cut actions; malformed and unavailable propositions vanish. -/
+def helperCutActions (proposals : List (String × String)) : TacticM (List Action) := do
+  let target ← (← getMainGoal).getType
+  let mut actions := []
+  for (text, rationale) in proposals do
+    if text.length <= 2000 && !text.contains "sorry" && !text.contains "admit" then
+      match Lean.Parser.runParserCategory (← getEnv) `term text with
+      | .error _ => pure ()
+      | .ok rawTermSyntax => try
+        let termSyntax : TSyntax `term := ⟨rawTermSyntax⟩
+        let proposition ← elabTerm termSyntax none
+        if (← isProp proposition) && !(← isDefEq proposition target) then
+          let name := mkIdent (freshIntroName ((← getLCtx).foldl (init := []) fun ns d => d.userName :: ns))
+          let action : Action := { tacticSyntax := ← `(tactic| refine (let $name:ident : $termSyntax:term := ?_; ?_)), text := s!"helper cut ({text}): {rationale}" }
+          if ← candidateWorks action then actions := actions.concat action
+      catch _ => pure ()
+  return actions
+
+private def helperActions (config : Config) (context : RankContext) : TacticM (List Action) := do
+  if config.maxHelperProposals == 0 || config.maxAdmittedHelpers == 0 then return []
+  let proposals ← providerHelpers context config.maxHelperProposals config.maxHelperMs
+  return (← helperCutActions proposals).take config.maxAdmittedHelpers
 
 /-- Ask the persistent localhost rank broker to order fixed catalogue entries.
 Successful rankings are cached for the lifetime of the Lean process so incremental re-elaboration
@@ -604,10 +684,15 @@ def searchWith (config : Config) (source : ActionSource) (ranker : ActionRanker)
         let (actions, calls) ← withMainContext do
           let actions ← source config
           let actions := withoutRepeatedUnfolds node.path actions
+          let context ← rankContext node
+          let helperCuts ← if config.enableLlmHelpers &&
+              helperNeedProbability context >= config.helperProbabilityThreshold then
+            helperActions config context
+          else pure []
+          let actions := helperCuts ++ actions
           if calls >= config.maxJevCalls then
             pure (actions, calls)
           else
-            let context ← rankContext node
             let now ← IO.monoMsNow
             let context := { context with remainingWallMs := start + config.maxWallMs - now }
             return (← ranker context actions, calls + 1)
@@ -687,7 +772,11 @@ def replaySuggestion (path : List Action) (indent : Nat := 0) : TacticM String :
 
 /-- Search ordinary locally generated actions and provide a replayable replacement. -/
 elab "jev?" : tactic => withMainContext do
-  match ← searchWith {} catalogue rank with
+  let helpersEnabled := (← IO.getEnv "JEV_LLM_HELPERS") == some "1"
+  if helpersEnabled && (← IO.getEnv "OPENROUTER_API_KEY").getD "" == "" then
+    logWarning "jev?: LLM helpers are enabled but OPENROUTER_API_KEY is missing; continuing without helpers"
+  let config : Config := { enableLlmHelpers := helpersEnabled }
+  match ← searchWith config catalogue rank with
   | none => throwError "jev? found no closing path in its bounded catalogue"
   | some node =>
     let ref ← getRef
