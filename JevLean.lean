@@ -310,14 +310,72 @@ def replay (path : List Action) : TacticM Unit := do
   for action in path do
     evalTactic action.tacticSyntax
 
+private abbrev ProofLine := Nat × String
+
+private partial def renderGoal (depth : Nat) (steps : List (Action × Nat)) :
+    TacticM (List ProofLine × List (Action × Nat)) := do
+  let (action, childCount) :: rest := steps |
+    throwError "cannot format an incomplete Jev proof path"
+  if childCount == 0 then
+    return ([(depth, action.text)], rest)
+  if childCount == 1 then
+    let (child, rest) ← renderGoal depth rest
+    return ((depth, action.text) :: child, rest)
+  let mut rest := rest
+  let mut lines : List ProofLine := [(depth, action.text)]
+  for _ in [:childCount] do
+    let (child, remaining) ← renderGoal (depth + 1) rest
+    let (_, first) :: tail := child |
+      throwError "cannot format an empty Jev proof branch"
+    lines := lines ++ (depth, s!"· {first}") :: tail
+    rest := remaining
+  return (lines, rest)
+
+private def renderForest (rootCount indent : Nat) (steps : List (Action × Nat)) :
+    TacticM String := do
+  let mut rest := steps
+  let mut lines : List ProofLine := []
+  for _ in [:rootCount] do
+    let (root, remaining) ← renderGoal (if rootCount == 1 then 0 else 1) rest
+    if rootCount == 1 then
+      lines := root
+    else
+      let (_, first) :: tail := root |
+        throwError "cannot format an empty Jev proof root"
+      lines := lines ++ (0, s!"· {first}") :: tail
+    rest := remaining
+  unless rest.isEmpty do
+    throwError "cannot format a Jev proof path with unused steps"
+  let some (_, first) := lines.head? |
+    throwError "cannot format an empty Jev proof path"
+  return lines.tail.foldl (init := first) fun text line =>
+    text ++ "\n" ++ String.ofList (List.replicate (indent + 2 * line.1) ' ') ++ line.2
+
+/-- Replay a closing path and format its branching structure as an indented tactic sequence. -/
+def replaySuggestion (path : List Action) (indent : Nat := 0) : TacticM String := do
+  let rootCount := (← getUnsolvedGoals).length
+  let mut steps : List (Action × Nat) := []
+  for action in path do
+    let goalsBefore ← getUnsolvedGoals
+    let siblingCount := goalsBefore.length - 1
+    evalTactic action.tacticSyntax
+    let goalsAfter ← getUnsolvedGoals
+    if goalsAfter.length < siblingCount then
+      throwError "a Jev replay action changed an untouched sibling goal"
+    steps := steps.concat (action, goalsAfter.length - siblingCount)
+  renderForest rootCount indent steps
+
 /-- Search ordinary locally generated actions and provide a replayable replacement. -/
 elab "jev?" : tactic => withMainContext do
   match ← searchWith {} catalogue rank with
   | none => throwError "jev? found no closing path in its bounded catalogue"
   | some node =>
-    replay node.path
-    Lean.Meta.Tactic.TryThis.addSuggestion (← getRef)
-      { suggestion := .string (String.intercalate "\n" (node.path.map (·.text))) }
+    let ref ← getRef
+    let some range := ref.getRange? |
+      throwError "jev? cannot format a suggestion without a source range"
+    let (indent, _) := Lean.Meta.Tactic.TryThis.getIndentAndColumn (← getFileMap) range
+    let suggestion ← replaySuggestion node.path indent
+    Lean.Meta.Tactic.TryThis.addSuggestion ref { suggestion }
 
 end Search
 

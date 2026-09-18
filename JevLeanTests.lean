@@ -115,7 +115,10 @@ elab "jev_test_induction_replay" : tactic => withMainContext do
   unless node.path.map (·.text) ==
       ["induction xs", "simp [JevLean.tally, *]", "simp [JevLean.tally, *]", "omega"] do
     throwError "unexpected induction path: {node.path.map (·.text)}"
-  replay node.path
+  let suggestion ← replaySuggestion node.path 2
+  unless suggestion ==
+      "induction xs\n  · simp [JevLean.tally, *]\n  · simp [JevLean.tally, *]\n    omega" do
+    throwError "unexpected formatted suggestion:\n{suggestion}"
 
 /-- Failed candidates leave the original proof state available to later candidates. -/
 example (P : Prop) (h : P) : P := by
@@ -153,12 +156,19 @@ example (P Q : Prop) (h : P → Q) (hp : P) : Q := by
 example (P : Prop) : P → P := by
   jev_test_aesop_rank_seam
 
-/-- The raw multi-line suggestion source replays as ordinary tactics. -/
+/-- The formatted multi-line suggestion replays with explicit branches. -/
 example (P : Prop) : P → P ∧ P := by
   intro h
   constructor
-  exact h
-  exact h
+  · exact h
+  · exact h
+
+/-- Nested continuation lines remain inside the appropriate induction branch. -/
+example (xs : List Nat) : JevLean.tally xs = xs.length := by
+  induction xs
+  · simp [JevLean.tally]
+  · simp [JevLean.tally, *]
+    omega
 
 /-- Bounded aesop configuration remains valid ordinary tactic source. -/
 example (P Q : Prop) : P ∧ Q → Q ∧ P := by
