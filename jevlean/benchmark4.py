@@ -445,7 +445,8 @@ def _sandboxed_lean_command(
         "--setenv", "LANG", "C.UTF-8",
     ]
     child_env: dict[str, str] = {"PATH": "/usr/bin:/bin", "HOME": "/tmp", "LANG": "C.UTF-8"}
-    for name in ("JEV_RANK_BROKER_PORT", "JEV_HELPER_BROKER_PORT", "JEV_LLM_HELPERS"):
+    for name in ("JEV_MODEL_BROKER_PORT", "JEV_RANK_BROKER_PORT", "JEV_HELPER_BROKER_PORT",
+                 "JEV_LLM_HELPERS"):
         value = os.environ.get(name)
         if value is not None:
             command += ["--setenv", name, value]

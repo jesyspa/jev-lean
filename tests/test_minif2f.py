@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from jevlean import minif2f
 
@@ -42,6 +43,18 @@ class MiniF2FIntegrityTests(unittest.TestCase):
         source, _ = minif2f.materialize_target(target, search_import="", proof="rfl")
         self.assertNotIn("JevLean", source)
         self.assertTrue(source.endswith(":= by\n  rfl\n"))
+
+    def test_search_and_replay_can_share_a_workspace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            lean = Path("/toolchain/bin/lean")
+            with mock.patch.object(minif2f.benchmark4, "_search_environment",
+                                   return_value=(lean, "/lean/path")), \
+                 mock.patch.dict("os.environ", {"JEV_MODEL_BROKER_PORT": "18765"}):
+                search, _ = minif2f._sandboxed_command(Path.cwd(), workspace, "Search.lean")
+                replay, _ = minif2f._sandboxed_command(Path.cwd(), workspace, "Replay.lean")
+                self.assertIn("JEV_MODEL_BROKER_PORT", search)
+                self.assertIn("JEV_MODEL_BROKER_PORT", replay)
 
     def test_source_extractor_rejects_equation_style_target(self):
         with self.assertRaises((minif2f.MiniF2FError, minif2f.benchmark4.BenchmarkError)):

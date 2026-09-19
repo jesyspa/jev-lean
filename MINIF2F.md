@@ -21,7 +21,7 @@ Run the pilot against this project's pin:
 
 ```bash
 python3 -m jevlean.minif2f audit
-python3 -m jevlean.minif2f run --output /path/to/results --timeout 30
+python3 -m jevlean.minif2f run --output /path/to/results
 ```
 
 `run` resumes matching task artifacts and writes `summary.json`. It records the frozen target digest, process output, generated proof, and fresh-process replay result. Do not report this pilot as evidence against model contamination.

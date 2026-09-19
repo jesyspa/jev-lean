@@ -230,13 +230,14 @@ def _sandboxed_command(search_project: Path, workspace: Path, source_name: str) 
     command += benchmark4._directory_mounts(search_project)
     command += ["--ro-bind", str(search_project.resolve()), str(search_project.resolve())]
     hidden_data = workspace / "empty-data"
-    hidden_data.mkdir()
+    hidden_data.mkdir(exist_ok=True)
     command += ["--ro-bind", str(hidden_data), str(search_project.resolve() / "data")]
     command += ["--bind", str(workspace), "/workspace", "--proc", "/proc", "--dev", "/dev",
                 "--tmpfs", "/tmp", "--dir", "/tmp/home", "--chdir", str(search_project.resolve()),
                 "--clearenv", "--setenv", "HOME", "/tmp/home", "--setenv", "PATH", f"{toolchain}/bin:/usr/bin:/bin",
                 "--setenv", "LEAN_PATH", lean_path, "--setenv", "LANG", "C.UTF-8"]
-    for name in ("JEV_RANK_BROKER_PORT", "JEV_HELPER_BROKER_PORT", "JEV_LLM_HELPERS"):
+    for name in ("JEV_MODEL_BROKER_PORT", "JEV_RANK_BROKER_PORT", "JEV_HELPER_BROKER_PORT",
+                 "JEV_LLM_HELPERS"):
         value = __import__("os").environ.get(name)
         if value is not None:
             command += ["--setenv", name, value]
@@ -267,7 +268,9 @@ def run_target(target: dict[str, Any], search_project: Path, timeout: float,
             command, env = _sandboxed_command(search_project, workspace, "Replay.lean")
             replay_run = benchmark4._run_process(command, search_project, remaining, env)
             replay = {"attempted": True, "accepted": replay_run["returncode"] == 0 and not replay_run["timed_out"],
-                      "timed_out": replay_run["timed_out"], "returncode": replay_run["returncode"], "output": replay_run["output"]}
+                      "timed_out": replay_run["timed_out"], "returncode": replay_run["returncode"],
+                      "wall_seconds": replay_run["wall_seconds"], "cpu_seconds": replay_run["cpu_seconds"],
+                      "output": replay_run["output"]}
         timed_out = search["timed_out"] or bool(replay_run and replay_run["timed_out"])
         solved = bool(marker and marker.get("status") == "solved" and replay["accepted"])
         return {"schema": 1, "task": {key: target[key] for key in ("id", "name", "statement_sha256")},
@@ -316,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
     run_parser = commands.add_parser("run")
     run_parser.add_argument("--search-project", type=Path, default=ROOT)
     run_parser.add_argument("--output", type=Path, required=True)
-    run_parser.add_argument("--timeout", type=float, default=30.0)
+    run_parser.add_argument("--timeout", type=float, default=180.0)
     run_parser.add_argument("--limit", type=int)
     run_parser.add_argument("--search-import", default="JevLean")
     run_parser.add_argument("--tactic", default="jev_benchmark?")
