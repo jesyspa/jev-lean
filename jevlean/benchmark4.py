@@ -475,6 +475,47 @@ def _atomic_json(path: Path, value: Any) -> None:
     temporary.replace(path)
 
 
+def _search_code_sha256(search_project: Path) -> str:
+    """Digest search sources and build configuration, excluding generated output."""
+    files = [path for path in search_project.rglob("*.lean") if ".lake" not in path.parts and ".git" not in path.parts]
+    files += [search_project / name for name in ("lakefile.toml", "lean-toolchain")]
+    contents = [
+        {"path": str(path.relative_to(search_project)), "sha256": sha256(path.read_bytes())}
+        for path in sorted(files) if path.is_file()
+    ]
+    return sha256(canonical_json(contents))
+
+
+def run_identity(adapter: str, task: dict[str, Any], environment: dict[str, Any],
+                 search_project: Path, timeout: float, search_import: str, tactic: str) -> dict[str, Any]:
+    """Return the complete reproducibility boundary for one reusable result."""
+    helpers_enabled = os.environ.get("JEV_LLM_HELPERS") == "1"
+    inputs = {
+        "schema": 1,
+        "adapter": adapter,
+        "task": task,
+        "environment": environment.get("actual"),
+        "search_code_sha256": _search_code_sha256(search_project),
+        "search": {"import": search_import, "tactic": tactic},
+        "limits": {"hard_timeout_seconds": timeout},
+        "observable_provider_config": {
+            "helpers_enabled": helpers_enabled,
+            "helper_model": os.environ.get("JEV_HELPER_MODEL") if helpers_enabled else None,
+            "rank_order": os.environ.get("JEV_RANK_ORDER"),
+        },
+    }
+    return {"schema": 1, "sha256": sha256(canonical_json(inputs)), "inputs": inputs}
+
+
+def validate_resume(result: dict[str, Any], expected: dict[str, Any], path: Path) -> None:
+    actual = result.get("run_identity")
+    if actual != expected:
+        raise BenchmarkError(
+            f"resume artifact is incompatible or legacy: {path}; remove cached task artifacts "
+            "or choose a new --output directory to rerun with these settings"
+        )
+
+
 def run_task(
     task: dict[str, Any], mathlib_root: Path, search_project: Path,
     timeout: float, search_import: str, tactic: str,
@@ -565,11 +606,15 @@ def run_pilot(
     output.mkdir(parents=True, exist_ok=True)
     for task in tasks:
         result_path = results_dir / f"{task['id']}.json"
+        _, statement_audit = materialize_task(task, mathlib_root, search_import="", tactic="skip")
+        identity = run_identity(
+            "benchmark4", {**task, "statement_sha256": statement_audit["target_header_sha256"]},
+            environment, search_project, timeout, search_import, tactic,
+        )
         if result_path.is_file():
             existing = json.loads(result_path.read_text())
-            if existing.get("task", {}).get("id") == task["id"]:
-                continue
-            raise BenchmarkError(f"resume artifact has the wrong task identity: {result_path}")
+            validate_resume(existing, identity, result_path)
+            continue
         try:
             result = run_task(
                 task, mathlib_root, search_project, timeout, search_import, tactic
@@ -593,6 +638,7 @@ def run_pilot(
                 "leakage_audit": None,
                 "search_process": None,
             }
+        result["run_identity"] = identity
         _atomic_json(result_path, result)
     results = [json.loads((results_dir / f"{task['id']}.json").read_text()) for task in tasks]
     summary = {

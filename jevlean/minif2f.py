@@ -289,12 +289,20 @@ def run_pilot(search_project: Path, output: Path, timeout: float, limit: int | N
     results = []
     for target in targets:
         result_path = output / "tasks" / f"{target['id']}.json"
+        identity = benchmark4.run_identity(
+            "minif2f", {key: target[key] for key in ("id", "name", "statement_sha256")},
+            environment, search_project, timeout, search_import, tactic,
+        )
         if result_path.exists():
             result = json.loads(result_path.read_text())
-            if result.get("task", {}).get("id") != target["id"]:
-                raise MiniF2FError(f"resume artifact has the wrong task identity: {result_path}")
+            if result.get("run_identity") != identity:
+                raise MiniF2FError(
+                    f"resume artifact is incompatible or legacy: {result_path}; remove cached task artifacts "
+                    "or choose a new --output directory to rerun with these settings"
+                )
         else:
             result = run_target(target, search_project, timeout, search_import, tactic)
+            result["run_identity"] = identity
             benchmark4._atomic_json(result_path, result)
         results.append(result)
     summary = {"schema": 1, "accepted_targets_sha256": pilot["accepted_targets_sha256"], "environment": environment,

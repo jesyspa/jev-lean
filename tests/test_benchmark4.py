@@ -165,6 +165,30 @@ class Benchmark4IntegrityTests(unittest.TestCase):
         output = "noise\n" + benchmark4.RESULT_MARKER + json.dumps(marker) + "\n"
         self.assertEqual(benchmark4._parse_result(output), marker)
 
+    def test_resume_identity_rejects_changed_statement_and_settings(self):
+        environment = {"compatible": True, "actual": {"lean_toolchain": "test", "mathlib_commit": "test"}}
+        with tempfile.TemporaryDirectory() as directory:
+            root, search_project, output = Path(directory), Path(directory) / "search", Path(directory) / "output"
+            search_project.mkdir()
+            task = self.fixture(root)
+            pilot = {"tasks": [task], "tasks_sha256": "pilot"}
+            result = {"schema": 1, "task": task, "status": "failed", "verified_solve": False}
+            with mock.patch.object(benchmark4, "load_pilot", return_value=pilot), \
+                 mock.patch.object(benchmark4, "audit_environment", return_value=environment), \
+                 mock.patch.object(benchmark4, "_search_environment"), \
+                 mock.patch.object(benchmark4, "run_task", return_value=dict(result)) as run:
+                benchmark4.run_pilot(root, search_project, output, 10, tactic="first")
+                benchmark4.run_pilot(root, search_project, output, 10, tactic="first")
+                self.assertEqual(run.call_count, 1)
+                with self.assertRaisesRegex(benchmark4.BenchmarkError, "incompatible or legacy"):
+                    benchmark4.run_pilot(root, search_project, output, 10, tactic="second")
+                with self.assertRaisesRegex(benchmark4.BenchmarkError, "incompatible or legacy"):
+                    benchmark4.run_pilot(root, search_project, output, 20, tactic="first")
+                source = root / task["file_path"]
+                source.write_text(FIXTURE_SOURCE.replace("n = n", "n = 1"), encoding="utf-8")
+                with self.assertRaisesRegex(benchmark4.BenchmarkError, "incompatible or legacy"):
+                    benchmark4.run_pilot(root, search_project, output, 10, tactic="first")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -67,6 +67,31 @@ class MiniF2FIntegrityTests(unittest.TestCase):
         with self.assertRaises(minif2f.MiniF2FError):
             minif2f._validate_manifest(altered)
 
+    def test_resume_identity_rejects_changed_statement_and_settings(self):
+        target = {"id": "mf2f-fixture", "name": "fixture", "statement": "theorem fixture : True :=",
+                  "statement_sha256": minif2f.sha256(b"theorem fixture : True :="), "port": "accepted"}
+        pilot = {"accepted_targets": [target], "accepted_targets_sha256": "pilot"}
+        environment = {"compatible": True, "actual": {"lean_toolchain": "test", "mathlib_commit": "test"}}
+        result = {"schema": 1, "task": {key: target[key] for key in ("id", "name", "statement_sha256")},
+                  "status": "failed", "verified_solve": False}
+        with tempfile.TemporaryDirectory() as directory:
+            root, output = Path(directory), Path(directory) / "output"
+            with mock.patch.object(minif2f, "load_pilot", return_value=pilot), \
+                 mock.patch.object(minif2f, "audit_environment", return_value=environment), \
+                 mock.patch.object(minif2f, "run_target", return_value=dict(result)) as run:
+                minif2f.run_pilot(root, output, 10, tactic="first")
+                minif2f.run_pilot(root, output, 10, tactic="first")
+                self.assertEqual(run.call_count, 1)
+                with self.assertRaisesRegex(minif2f.MiniF2FError, "incompatible or legacy"):
+                    minif2f.run_pilot(root, output, 10, tactic="second")
+                with self.assertRaisesRegex(minif2f.MiniF2FError, "incompatible or legacy"):
+                    minif2f.run_pilot(root, output, 20, tactic="first")
+                changed = dict(target, statement="theorem fixture : False :=",
+                               statement_sha256=minif2f.sha256(b"theorem fixture : False :="))
+                with mock.patch.object(minif2f, "load_pilot", return_value={**pilot, "accepted_targets": [changed]}):
+                    with self.assertRaisesRegex(minif2f.MiniF2FError, "incompatible or legacy"):
+                        minif2f.run_pilot(root, output, 10, tactic="first")
+
 
 if __name__ == "__main__":
     unittest.main()
