@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import statistics
 import subprocess
 import tempfile
@@ -20,11 +21,12 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from . import benchmark4
+
 PANTOGRAPH_COMMIT = "7076ab3632b5de67a4f83ab259b23b37acaea1d0"
 LEAN_VERSION = "4.30.0"
 ROOT = Path(__file__).resolve().parents[1]
 REPL = ROOT / ".lake/packages/pantograph/.lake/build/bin/repl"
-TOOLCHAIN = Path.home() / ".elan/toolchains/leanprover--lean4---v4.30.0"
 
 
 class PantographError(RuntimeError):
@@ -63,17 +65,11 @@ class Profile:
         return result
 
 
-def _lean_path() -> str:
-    completed = subprocess.run(
-        ["lake", "env", "printenv", "LEAN_PATH"],
-        cwd=ROOT,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        timeout=30,
-        check=True,
-    )
-    return completed.stdout.strip().splitlines()[-1]
+def _runtime_environment() -> tuple[Path, str]:
+    try:
+        return benchmark4._search_environment(str(ROOT.resolve()))
+    except benchmark4.BenchmarkError as error:
+        raise PantographError(str(error)) from error
 
 
 def _sandbox_prefix(writable: Path | None = None) -> list[str]:
@@ -84,44 +80,35 @@ def _sandbox_prefix(writable: Path | None = None) -> list[str]:
     isolated writable directory as /workspace.
     """
 
-    root = str(ROOT)
-    toolchain = str(TOOLCHAIN)
-    command = [
-        "/usr/bin/bwrap",
-        "--die-with-parent",
-        "--new-session",
-        "--unshare-net",
-        "--ro-bind", "/usr", "/usr",
-        "--symlink", "usr/bin", "/bin",
-        "--ro-bind", "/lib", "/lib",
-        "--ro-bind", "/lib64", "/lib64",
-        "--dir", "/etc",
-        "--ro-bind", "/etc/ld.so.cache", "/etc/ld.so.cache",
-        "--ro-bind", "/etc/localtime", "/etc/localtime",
-        "--dir", "/opt",
-        "--dir", "/opt/bots",
-        "--ro-bind", "/opt/bots/lean", "/opt/bots/lean",
-        "--tmpfs", "/home",
-        "--dir", "/home/goldbot",
-        "--dir", "/home/goldbot/dev",
-        "--dir", "/home/goldbot/dev/jev-lean",
-        "--ro-bind", root, root,
-        "--dir", "/home/goldbot/.elan",
-        "--dir", "/home/goldbot/.elan/toolchains",
-        "--ro-bind", toolchain, toolchain,
-        "--proc", "/proc",
-        "--dev", "/dev",
-        "--tmpfs", "/tmp",
-        "--dir", "/tmp/home",
-    ]
+    bwrap = shutil.which("bwrap")
+    if bwrap is None:
+        raise PantographError("bubblewrap (bwrap) is required for isolated Pantograph execution")
+    lean, lean_path = _runtime_environment()
+    command = [bwrap, "--die-with-parent", "--new-session", "--unshare-net"]
+    for host_path in (Path("/usr"), Path("/lib"), Path("/lib64")):
+        if host_path.exists():
+            command += ["--ro-bind", str(host_path), str(host_path)]
+    command += ["--dir", "/etc"]
+    for host_path in (Path("/etc/ld.so.cache"), Path("/etc/localtime")):
+        if host_path.exists():
+            command += ["--ro-bind", str(host_path), str(host_path)]
+    command += ["--tmpfs", "/home", "--tmpfs", "/tmp"]
+    try:
+        command += benchmark4._readonly_mounts(ROOT)
+        command += benchmark4._runtime_mounts(lean, lean_path)
+        if REPL.exists():
+            command += benchmark4._readonly_mounts(REPL)
+    except benchmark4.BenchmarkError as error:
+        raise PantographError(str(error)) from error
+    command += ["--proc", "/proc", "--dev", "/dev", "--dir", "/tmp/home"]
     if writable is not None:
         command += ["--dir", "/workspace", "--bind", str(writable), "/workspace"]
     command += [
-        "--chdir", root,
+        "--chdir", str(ROOT),
         "--setenv", "HOME", "/tmp/home",
         "--setenv", "TMPDIR", "/tmp",
-        "--setenv", "LEAN_PATH", _lean_path(),
-        "--setenv", "PATH", f"{toolchain}/bin:/usr/bin:/bin",
+        "--setenv", "LEAN_PATH", lean_path,
+        "--setenv", "PATH", f"{lean.parents[1]}/bin:/usr/bin:/bin",
         "--setenv", "LANG", "C.UTF-8",
     ]
     return command
@@ -133,7 +120,7 @@ class PantographWorker:
     def __init__(self, imports: tuple[str, ...] = ("Init",), startup_timeout: float = 90):
         if not REPL.is_file():
             raise PantographError(
-                "Pantograph REPL is absent; run the documented lean-cache build command"
+                "Pantograph REPL is absent; build it with `lake build @pantograph/repl`"
             )
         started = time.monotonic()
         command = _sandbox_prefix() + [str(REPL), *imports]
@@ -327,7 +314,8 @@ def replay_source(source: str, timeout: float = 120) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="pantograph-replay-") as directory:
         writable = Path(directory)
         (writable / "Replay.lean").write_text(source, encoding="utf-8")
-        command = _sandbox_prefix(writable) + [str(TOOLCHAIN / "bin/lean"), "/workspace/Replay.lean"]
+        lean, _ = _runtime_environment()
+        command = _sandbox_prefix(writable) + [str(lean), "/workspace/Replay.lean"]
         completed = subprocess.run(
             command,
             cwd=ROOT,
@@ -402,8 +390,9 @@ class SpikeRunner:
         pantograph = next((p for p in manifest["packages"] if p["name"] == "pantograph"), None)
         if pantograph is None or pantograph.get("rev") != PANTOGRAPH_COMMIT:
             raise PantographError("lake manifest does not contain the required Pantograph commit")
+        lean_executable, _ = _runtime_environment()
         lean = subprocess.run(
-            [str(TOOLCHAIN / "bin/lean"), "--version"], text=True,
+            [str(lean_executable), "--version"], text=True,
             stdout=subprocess.PIPE, check=True, timeout=10,
         ).stdout.strip()
         if f"version {LEAN_VERSION}" not in lean:

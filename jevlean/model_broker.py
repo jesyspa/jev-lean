@@ -193,13 +193,14 @@ def main() -> None:
     parser.add_argument("--host", default=DEFAULT_HOST, choices=[DEFAULT_HOST])
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     args = parser.parse_args()
-    if not 1 <= args.port <= 65535: raise SystemExit("--port must be between 1 and 65535")
+    if not 0 <= args.port <= 65535: raise SystemExit("--port must be between 0 and 65535")
     rank_key, helper_key = os.environ.get("TYPESAFE_API_KEY", ""), os.environ.get("OPENROUTER_API_KEY", "")
     broker = ModelBroker(PersistentTypeSafeClient(rank_key) if rank_key else None, PersistentOpenRouterClient(helper_key) if helper_key else None)
     try: server = BrokerServer((args.host, args.port), broker)
     except OSError as error: raise SystemExit(f"jev model broker cannot bind {args.host}:{args.port}: {safe_error(error)}; another service may be running") from error
     with server:
-        print(f"jev model broker ready {args.host}:{args.port} protocol={PROTOCOL} rank={rank_key != ''} helpers={helper_key != ''}", flush=True)
+        host, port = server.server_address
+        print(f"jev model broker ready {host}:{port} protocol={PROTOCOL} rank={rank_key != ''} helpers={helper_key != ''}", flush=True)
         server.serve_forever()
 
 if __name__ == "__main__": main()

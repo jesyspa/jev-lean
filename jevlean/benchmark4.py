@@ -391,15 +391,50 @@ def _directory_mounts(path: Path) -> list[str]:
 
 @lru_cache(maxsize=4)
 def _search_environment(search_project_text: str) -> tuple[Path, str]:
+    """Discover Lake's actual Lean executable and package search roots."""
     search_project = Path(search_project_text)
     environment = subprocess.run(
-        ["lake", "env", "sh", "-c", 'command -v lean; printf "%s\\n" "$LEAN_PATH"'],
+        ["lake", "env", "sh", "-c", 'prefix=$(lean --print-prefix) && printf "%s/bin/lean\\n%s\\n" "$prefix" "$LEAN_PATH"'],
         cwd=search_project, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
     )
     lines = environment.stdout.strip().splitlines()
     if environment.returncode != 0 or len(lines) < 2:
         raise BenchmarkError(f"cannot locate the search toolchain: {environment.stderr[-2000:]}")
-    return Path(lines[-2]).resolve(), lines[-1]
+    lean = Path(lines[-2]).resolve()
+    if not lean.is_file() or not lines[-1]:
+        raise BenchmarkError("Lake reported an unusable Lean executable or LEAN_PATH")
+    return lean, lines[-1]
+
+
+def _readonly_mounts(path: Path) -> list[str]:
+    """Make a host path and its resolved target available at their real paths."""
+    mounts: list[str] = []
+    for candidate in dict.fromkeys((path.absolute(), path.resolve())):
+        if not candidate.exists():
+            raise BenchmarkError(f"required Lean runtime path does not exist: {candidate}")
+        mounts += _directory_mounts(candidate)
+        mounts += ["--ro-bind", str(candidate), str(candidate)]
+    return mounts
+
+
+def _runtime_mounts(lean: Path, lean_path: str) -> list[str]:
+    """Mount the discovered toolchain and each existing package root.
+
+    Lake can include optional, unbuilt directories in ``LEAN_PATH``.  Their
+    nearest existing ancestor is sufficient and avoids turning that harmless
+    state into a host-layout requirement.
+    """
+    roots = [lean.parents[1]]
+    for entry in lean_path.split(":"):
+        root = Path(entry)
+        while not root.exists() and root != root.parent:
+            root = root.parent
+        if root.exists():
+            roots.append(root)
+    mounts: list[str] = []
+    for root in roots:
+        mounts += _readonly_mounts(root)
+    return mounts
 
 
 def _sandboxed_lean_command(
@@ -407,9 +442,9 @@ def _sandboxed_lean_command(
     source_name: str, task: dict[str, Any], visible_target: str,
 ) -> tuple[list[str], dict[str, str]]:
     """Construct a hidden-home sandbox with only sanitized target source visible."""
-    bwrap = Path("/usr/bin/bwrap")
-    if not bwrap.is_file():
-        raise BenchmarkError("bubblewrap is required for leakage-controlled execution")
+    bwrap = shutil.which("bwrap")
+    if bwrap is None:
+        raise BenchmarkError("bubblewrap (bwrap) is required for leakage-controlled execution")
     lean, lean_path = _search_environment(str(search_project.resolve()))
     toolchain = lean.parents[1]
     shadow = workspace / "VisibleTarget.lean"
@@ -423,19 +458,13 @@ def _sandboxed_lean_command(
     for host_path in (Path("/etc/ld.so.cache"), Path("/etc/localtime"), Path("/etc/hosts")):
         if host_path.exists():
             command += ["--ro-bind", str(host_path), str(host_path)]
-    lean_cache = Path("/opt/bots/lean")
-    if lean_cache.exists():
-        command += _directory_mounts(lean_cache)
-        command += ["--ro-bind", str(lean_cache), str(lean_cache)]
-    command += _directory_mounts(search_project)
-    command += ["--ro-bind", str(search_project.resolve()), str(search_project.resolve())]
-    command += _directory_mounts(toolchain)
+    command += _readonly_mounts(search_project)
+    command += _runtime_mounts(lean, lean_path)
     if search_project.resolve() not in mathlib_root.resolve().parents and mathlib_root.resolve() != search_project.resolve():
         command += _directory_mounts(mathlib_root)
         command += ["--ro-bind", str(mathlib_root.resolve()), str(mathlib_root.resolve())]
     command += [
         "--ro-bind", str(shadow), str(target_path),
-        "--ro-bind", str(toolchain), str(toolchain),
         "--bind", str(workspace), "/workspace",
         "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
         "--dir", "/tmp/home", "--chdir", str(search_project.resolve()),

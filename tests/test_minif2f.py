@@ -47,14 +47,20 @@ class MiniF2FIntegrityTests(unittest.TestCase):
     def test_search_and_replay_can_share_a_workspace(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            lean = Path("/toolchain/bin/lean")
+            toolchain = workspace / "toolchain"
+            lean = toolchain / "bin/lean"
+            package = workspace / "packages/mathlib/Mathlib"
+            lean.parent.mkdir(parents=True)
+            package.mkdir(parents=True)
+            lean.touch()
             with mock.patch.object(minif2f.benchmark4, "_search_environment",
-                                   return_value=(lean, "/lean/path")), \
+                                   return_value=(lean, str(package))), \
                  mock.patch.dict("os.environ", {"JEV_MODEL_BROKER_PORT": "18765"}):
                 search, _ = minif2f._sandboxed_command(Path.cwd(), workspace, "Search.lean")
                 replay, _ = minif2f._sandboxed_command(Path.cwd(), workspace, "Replay.lean")
                 self.assertIn("JEV_MODEL_BROKER_PORT", search)
                 self.assertIn("JEV_MODEL_BROKER_PORT", replay)
+                self.assertNotIn("/opt/bots/lean", search)
 
     def test_source_extractor_rejects_equation_style_target(self):
         with self.assertRaises((minif2f.MiniF2FError, minif2f.benchmark4.BenchmarkError)):

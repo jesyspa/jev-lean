@@ -16,6 +16,8 @@ class PantographFeasibilityTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if os.environ.get("RUN_PANTOGRAPH_SPIKE") != "1":
+            raise unittest.SkipTest("set RUN_PANTOGRAPH_SPIKE=1 to run the slow Pantograph integration spike")
         output = os.environ.get("PANTOGRAPH_SPIKE_RESULTS")
         cls.result = run_and_write(Path(output) if output else None)
 

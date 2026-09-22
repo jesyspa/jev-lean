@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import shutil
 from pathlib import Path
 import re
 import subprocess
@@ -208,12 +210,12 @@ def acquire(output: Path) -> Path:
 
 def _sandboxed_command(search_project: Path, workspace: Path, source_name: str) -> tuple[list[str], dict[str, str]]:
     """Run a standalone target without mounting any miniF2F source or manifest."""
-    bwrap = Path("/usr/bin/bwrap")
-    if not bwrap.is_file():
-        raise MiniF2FError("bubblewrap is required for leakage-controlled execution")
+    bwrap = shutil.which("bwrap")
+    if bwrap is None:
+        raise MiniF2FError("bubblewrap (bwrap) is required for leakage-controlled execution")
     lean, lean_path = benchmark4._search_environment(str(search_project.resolve()))
     toolchain = lean.parents[1]
-    command = [str(bwrap), "--die-with-parent", "--new-session"]
+    command = [bwrap, "--die-with-parent", "--new-session"]
     for host_path in (Path("/usr"), Path("/lib"), Path("/lib64")):
         if host_path.exists():
             command += ["--ro-bind", str(host_path), str(host_path)]
@@ -221,14 +223,8 @@ def _sandboxed_command(search_project: Path, workspace: Path, source_name: str) 
     for host_path in (Path("/etc/ld.so.cache"), Path("/etc/localtime"), Path("/etc/hosts")):
         if host_path.exists():
             command += ["--ro-bind", str(host_path), str(host_path)]
-    lean_cache = Path("/opt/bots/lean")
-    if lean_cache.exists():
-        command += benchmark4._directory_mounts(lean_cache)
-        command += ["--ro-bind", str(lean_cache), str(lean_cache)]
-    command += benchmark4._directory_mounts(toolchain)
-    command += ["--ro-bind", str(toolchain), str(toolchain)]
-    command += benchmark4._directory_mounts(search_project)
-    command += ["--ro-bind", str(search_project.resolve()), str(search_project.resolve())]
+    command += benchmark4._runtime_mounts(lean, lean_path)
+    command += benchmark4._readonly_mounts(search_project)
     hidden_data = workspace / "empty-data"
     hidden_data.mkdir(exist_ok=True)
     command += ["--ro-bind", str(hidden_data), str(search_project.resolve() / "data")]
@@ -238,7 +234,7 @@ def _sandboxed_command(search_project: Path, workspace: Path, source_name: str) 
                 "--setenv", "LEAN_PATH", lean_path, "--setenv", "LANG", "C.UTF-8"]
     for name in ("JEV_MODEL_BROKER_PORT", "JEV_RANK_BROKER_PORT", "JEV_HELPER_BROKER_PORT",
                  "JEV_LLM_HELPERS"):
-        value = __import__("os").environ.get(name)
+        value = os.environ.get(name)
         if value is not None:
             command += ["--setenv", name, value]
     return command + [str(lean), f"/workspace/{source_name}"], {"PATH": "/usr/bin:/bin", "HOME": "/tmp", "LANG": "C.UTF-8"}
