@@ -19,8 +19,12 @@ open Lean Elab Tactic Meta
 
 /-- A concrete Lean command generated locally from the current proof state. -/
 structure Action where
+  /-- Replayable Lean tactic syntax. -/
   tacticSyntax : TSyntax `tactic
+  /-- Ranking description, which may include non-Lean provider rationale. -/
   text : String
+  /-- Optional source when the ranking description is not itself replayable Lean. -/
+  replayText? : Option String := none
   cost : Nat := 1
   /-- Generator family, used only for deterministic search telemetry. -/
   family : String := "ordinary"
@@ -561,8 +565,13 @@ def helperCutActions (proposals : List (String × String)) : TacticM (List Actio
         let termSyntax : TSyntax `term := ⟨rawTermSyntax⟩
         let proposition ← elabTerm termSyntax none
         if (← isProp proposition) && !(← isDefEq proposition target) then
-          let name := mkIdent (freshIntroName ((← getLCtx).foldl (init := []) fun ns d => d.userName :: ns))
-          let action : Action := { tacticSyntax := ← `(tactic| refine (let $name:ident : $termSyntax:term := ?_; ?_)), text := s!"helper cut ({text}): {rationale}" }
+          let freshName := freshIntroName ((← getLCtx).foldl (init := []) fun ns d => d.userName :: ns)
+          let name := mkIdent freshName
+          let action : Action := {
+            tacticSyntax := ← `(tactic| refine (let $name:ident : $termSyntax:term := ?_; ?_))
+            text := s!"helper cut ({text}): {rationale}"
+            replayText? := some s!"refine (let {freshName} : {text} := ?_; ?_)"
+          }
           if ← candidateWorks action then actions := actions.concat action
       catch _ => pure ()
   return actions
@@ -789,17 +798,21 @@ def replay (path : List Action) : TacticM Unit := do
 
 private abbrev ProofLine := Nat × String
 
+/-- Render replayable source rather than the possibly prose ranking description. -/
+private def Action.replaySource (action : Action) : String :=
+  action.replayText?.getD action.text
+
 private partial def renderGoal (depth : Nat) (steps : List (Action × Nat)) :
     TacticM (List ProofLine × List (Action × Nat)) := do
   let (action, childCount) :: rest := steps |
     throwError "cannot format an incomplete Jev proof path"
   if childCount == 0 then
-    return ([(depth, action.text)], rest)
+    return ([(depth, action.replaySource)], rest)
   if childCount == 1 then
     let (child, rest) ← renderGoal depth rest
-    return ((depth, action.text) :: child, rest)
+    return ((depth, action.replaySource) :: child, rest)
   let mut rest := rest
-  let mut lines : List ProofLine := [(depth, action.text)]
+  let mut lines : List ProofLine := [(depth, action.replaySource)]
   for _ in [:childCount] do
     let (child, remaining) ← renderGoal (depth + 1) rest
     let (_, first) :: tail := child |

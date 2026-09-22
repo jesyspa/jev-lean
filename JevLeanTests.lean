@@ -159,6 +159,38 @@ elab "jev_test_helper_validation" : tactic => withMainContext do
   | _ => throwError "a helper cut did not produce exactly one successor"
   evalTactic (← `(tactic| exact fun h => h))
 
+elab "jev_test_helper_replay_source" : tactic => withMainContext do
+  let cuts ← helperCutActions [("P", "available cut")]
+  let [cut] := cuts | throwError "helper validation did not admit P"
+  let assumption : Action := { tacticSyntax := ← `(tactic| assumption), text := "assumption" }
+  let root ← initialNode
+  let [afterCut] ← expand root [cut] |
+    throwError "helper cut did not create a unique successor"
+  afterCut.restore
+  let [afterFirstAssumption] ← expand afterCut [assumption] |
+    throwError "helper proof obligation did not close"
+  afterFirstAssumption.restore
+  let [closed] ← expand afterFirstAssumption [assumption] |
+    throwError "helper continuation obligation did not close"
+  unless closed.goals.isEmpty do
+    throwError "helper path did not close"
+  root.restore
+  let suggestion ← replaySuggestion closed.path 2
+  unless suggestion.startsWith "refine (let jev_h1 : P := ?_; ?_)" &&
+      suggestion.contains "\n  · assumption\n  · assumption" do
+    throwError "helper replay did not use fresh replayable source:\n{suggestion}"
+  let file : System.FilePath := "/tmp/jevlean-helper-replay-regression.lean"
+  let source := "import JevLean\n\nexample (P Q : Prop) (hp : P) (hq : Q) : Q := by\n  have jev_h : P := hp\n  " ++ suggestion ++ "\n"
+  IO.FS.writeFile file source
+  let output ← IO.Process.output {
+    cmd := "lake"
+    args := #["env", "lean", file.toString]
+    cwd := some "."
+  }
+  IO.FS.removeFile file
+  unless output.exitCode == 0 do
+    throwError "fresh Lean process rejected helper replay source:\n{output.stderr}"
+
 elab "jev_test_restoration" : tactic => withMainContext do
   let root ← initialNode
   let _ ← expand root [{ tacticSyntax := ← `(tactic| skip), text := "skip" }]
@@ -481,6 +513,11 @@ elab "jev_test_induction_replay" : tactic => withMainContext do
 /-- Helper propositions become verified cuts rather than trusted declarations. -/
 example (P : Prop) : P → P := by
   jev_test_helper_validation
+
+/-- Helper-cut ranking prose stays separate from replayable source. -/
+example (P Q : Prop) (hp : P) (hq : Q) : Q := by
+  have jev_h : P := hp
+  jev_test_helper_replay_source
 
 /-- Failed candidates leave the original proof state available to later candidates. -/
 example (P : Prop) (h : P) : P := by
