@@ -1,88 +1,80 @@
 # jev-lean
 
-Experiments on Jev-guided Lean proof search. Lean generates or executes concrete actions and remains the sole correctness oracle; Jev is evaluated as a ranker of promising proof steps.
+JevLean is a research prototype for model-ranked Lean 4 proof search. The `jev?` tactic builds and checks a bounded catalogue of Lean actions, asks Jev to rank them, explores restorable tactic states, replays a successful path, and emits ordinary tactic source through `Try this`. Lean and Mathlib remain the proof checker.
 
-`jev?` is a deterministic rank-guided bounded Lean-native successor search. Each frontier node retains a restorable tactic state, ordered goals, replayable path, depth, and cost. Expansion applies `intro`, `constructor`, `left`/`right`, bounded proposition and inductive-data `cases`, bounded inductive `induction` including target-relevant accumulator generalization, checked conjunction/existential destructuring with fresh `jev_h` names, checked existential witnesses from local terms, local `exact`/`apply`, matched local equality rewrites in both directions, matched `simp only` normalization lemmas, goal-head and hypothesis-head definition unfolds, focused-goal-and-context global named-lemma `exact`/`apply` retrieval, and bounded closing automation to the first goal while preserving sibling order. Rewrite and definition-unfold generation have independent candidate bounds; each unfold is checked before ranking and a definition can be unfolded only once per search path. Retrieval scores declaration conclusions by constants shared with the focused goal and local context, retains a deterministic bounded name list, and executes every rendered candidate in the current tactic state before it reaches Jev; unavailable or ill-typed names never enter the ranking request. A persistent localhost model broker routes explicit rank and helper requests. Its rank and helper provider clients have separate reusable connections, locks, deadlines, and failure policies. `jev?` requires a reachable broker with rank capability; ranking failure is reported to the tactic. Broker responses are bounded JSON frames and action order is validated before use. Successful rankings are cached in the Lean process, so incremental re-elaboration of the same state reuses them. `aesop` remains a normal rankable candidate. A closing path is replayed and emitted as raw ordinary tactic source through `Try this`.
+The tactic is implemented and covered by offline replay tests. The repository also contains frozen ranking studies, a six-goal search calibration, and external benchmark adapters. It is not a production prover, and the committed studies do not establish Mathlib-scale retrieval or end-to-end solve rates.
 
-## Optional LLM helper cuts
+## Prerequisites and setup
 
-Set `JEV_LLM_HELPERS=1` to enable a separate helper-state meta-action. Its deterministic gate estimates helper need from the rendered state: 20% base, +20% per sibling, +55% for quantified/existential goals, and +20% for implications. The default threshold is 85%; only states at or above it make one cached request. Equivalent focused goal plus ordered siblings share a canonical identity, so revisits do not repeat a request. Each request is capped at 2 seconds, four structured propositions, and two admitted cuts.
+Install Git, Python 3, and Lean through `elan`: https://lean-lang.org/install/
 
-The shared broker advertises helper capability in its health response. `JEV_HELPER_MODEL` selects its default `openai/gpt-4o-mini` model. Lean never reads `OPENROUTER_API_KEY`; unavailable helper capability and provider failures produce no helper proposals, so ordinary candidates remain available.
-
-The provider returns proposition/rationale pairs, never Lean tactics. Lean parses and elaborates each proposition in the live context, rejects malformed, unavailable, non-`Prop`, unchanged, and `sorry`/`admit` proposals, then includes surviving cuts in Jev's normal ranking request. An admitted `H` is `refine (let h : H := ?_; ?_)`: search must prove `H` from the original context and then prove the original goal with `h : H`; no provider output is trusted as a proof.
-
-Start the shared broker before invoking `jev?`:
+A normal setup uses Lake directly and does not require the host-specific build cache:
 
 ```bash
-TYPESAFE_API_KEY=... OPENROUTER_API_KEY=... python3 -m jevlean.model_broker
+git clone https://github.com/jesyspa/jev-lean.git
+cd jev-lean
+lake build
 ```
 
-It listens only on `127.0.0.1:8765`; set `JEV_MODEL_BROKER_PORT` in Lean's environment and pass the same `--port` to use another port. `JEV_RANK_BROKER_PORT` remains an environment compatibility fallback. Startup prints readiness including protocol `jev-model-broker/1` and capabilities; a second process fails its bind rather than attaching to an existing or incompatible listener. Credentials are optional at startup: health reports which capabilities are available. Lean never starts the service or receives credentials. Each connection carries exactly one newline-delimited JSON request and is closed after one response; both sides enforce a 1 MB frame limit. The remaining theorem wall allowance is sent as the rank deadline, and Lean also abandons a broker operation at that deadline. Responses include resolved model and provider usage when supplied; errors are bounded and redact configured credentials. `python3 -m jevlean.rank_broker` and `python3 -m jevlean.helper_broker` are compatibility launchers for this same service.
+The pinned toolchain is in `lean-toolchain`; Lake fetches the pinned Mathlib and Pantograph dependencies. Bubblewrap (`bwrap`) is required only by the external benchmark and Pantograph isolation runners on Linux.
 
-The scheduler fingerprints every executed successor from its ordered rendered goals and retains a bounded transposition table keyed by that canonical state. Equal-cost duplicate successors and cycles are suppressed before they enter the frontier; a lower-cost route replaces the retained route. This applies equally to ordinary and helper-cut actions, and the canonical identity also keys helper-provider caching. Search metrics expose expanded nodes, attempted transitions, admitted and duplicate successors, repeated action families, table occupancy, and wall time. The representative duplicate-outcome fixture is recorded in `artifacts/search-diversity-metrics.json`; it found no evidence supporting a family quota, so selection preserves all canonically distinct states.
+## Use `jev?`
 
-The default practical ledger is depth 6, path cost 6, 64 visited frontier nodes, a 128-state transposition table, 256 attempted catalogue transitions, 16 Jev calls, 10 seconds of wall time, and 24 retrieved global names per focused goal. The retrieval bound is applied before ranking and admits at most two checked actions (`exact` and `apply`) per name. Structural generation is independently capped at two proposition cases, two data cases, two inductions, one target-relevant generalizing induction, two existential witnesses, and two conjunction/existential destructures. Every optional structural action is executed before ranking; data actions require an inductive local, witness actions require an existential target, and generalized locals must occur in that target. Fresh destructuring names avoid existing context names, so replay and descendant generation remain stable. Wall time is checked between Lean transitions and Lean tactic execution remains subject to Lean's enclosing heartbeat limit. Rewrite generation is restricted to checked equality rewrites and checked simp-only normalizations, while unfold generation only considers definition constants at focused heads.
-
-## Results so far
-
-| Study | Result | What it establishes | Main limitation |
-|---|---:|---|---|
-| Initial synthetic catalogue | Jev selected a successful tactic on 11/12 goals; always-`aesop` solved 10/12 | A live Jev call can rank a small verified tactic catalogue | Small synthetic set with fixed actions |
-| Synthetic progress benchmark | Jev found a frozen useful action within three attempts on 14/15 goals; Aesop-first found 13/15 | Jev can rank some non-closing structural steps and compact retrieval candidates | The 15 goals and bounded continuations were author-written |
-| Pantograph spike | 9/10 feasibility gates passed | Branching, multi-goal execution, isolated helper lineages, recovery, and replay are feasible | `rw?` ignored the intended timeout and exceeded a 180-second wall limit |
-| Bounded search calibration | Accumulated defaults solved and replayed 6/6 frozen goals; the feature-disabled comparator solved 4/6 | Generated rewrite and structural paths add verified closes under the current ledger | Six representative states with a deterministic ranker are not a Mathlib-scale solve-rate estimate |
-
-The strongest current evidence is next-action ranking, not autonomous proof search. None of these studies measures end-to-end theorem solve rate, Mathlib-scale retrieval, or LLM-generated helper success.
-
-The external end-to-end adapters are documented in [BENCHMARK4.md](BENCHMARK4.md) and [MINIF2F.md](MINIF2F.md). The miniF2F pilot fixes 75 standalone Lean 4.30 statements with Mathlib-only premises and fresh replay. [EXTERNAL_BENCHMARKS.md](EXTERNAL_BENCHMARKS.md) compares the available external benchmarks.
-
-Detailed methods and caveats:
-
-- [REPORT.md](REPORT.md)
-- [PANTOGRAPH_SPIKE.md](PANTOGRAPH_SPIKE.md)
-- [CALIBRATION_REPORT.md](CALIBRATION_REPORT.md)
-
-## Design status
-
-The intended user interface is a Lean suggestion tactic:
+Create `Example.lean` in the repository:
 
 ```lean
-theorem example ... := by
+import JevLean
+
+example (P Q : Prop) (hp : P) (hq : Q) : P ∧ Q := by
   jev?
 ```
 
-It should search, check the result in Lean, and offer ordinary Lean source through `Try this`. Users should commit the generated proof rather than leave network-dependent search in normal builds.
-
-Two implementation designs remain plausible:
-
-1. **Lean-native search:** run action generation, tactic-state branching, and search in `TacticM`; use an external broker only for credentials and model calls.
-2. **External search:** run the scheduler outside Lean and use Pantograph to execute actions in supervised Lean processes.
-
-A hybrid can expose `jev?` while searching in an isolated external Lean worker. [DESIGN.md](DESIGN.md) compares these designs and records the shared constraints.
-
-Independent of implementation language:
-
-- Lean and Mathlib supply tactic execution, suggestions, automation, and checking.
-- Jev ranks concrete verified alternatives; it does not invent Lean code.
-- Generative LLMs are fallback behavior for exhausted tactical search or complete helper patches.
-- Every accepted proof is replayed from source in a fresh Lean process.
-- Credentials remain outside generated-code workers and committed traces.
-- Evaluations freeze tasks and compare policies under explicit resource budgets.
-
-## Reproduce committed results
-
-Use the project cache wrapper for Lean builds:
+In one terminal, start the localhost broker with a TypeSafe API credential:
 
 ```bash
-lean-cache use .
-lean-cache check-env
-lean-cache build --wait .
-python3 -m unittest discover -s tests -v
-python3 -m jevlean.progress metrics
-python3 -m jevlean.rank < rank-request.json
-TYPESAFE_API_KEY=... python3 -m jevlean.rank_broker
-python3 -m jevlean.calibration --check
+TYPESAFE_API_KEY=... python3 -m jevlean.model_broker
 ```
 
-Replay uses committed, credential-free traces. Live commands require a TypeSafe API key and intentionally create a new experiment.
+Then elaborate the file in another terminal:
+
+```bash
+lake env lean Example.lean
+```
+
+A successful run prints a `Try this` proof. Copy that ordinary Lean proof into source rather than making routine builds depend on the broker. Running this example makes a provider request and may incur provider charges.
+
+The broker listens only on `127.0.0.1:8765`. Use `--port` and the matching `JEV_MODEL_BROKER_PORT` to select another port. `jev?` requires the broker's rank capability, supplied by `TYPESAFE_API_KEY`. Set `OPENROUTER_API_KEY` and `JEV_LLM_HELPERS=1` to enable optional helper-cut proposals; `JEV_HELPER_MODEL` defaults to `openai/gpt-4o-mini`. Credentials stay in the broker process and are not sent to Lean workers.
+
+For ranking, Lean sends the rendered focused proof state, ordered sibling goals, the current tactic path, candidate identifiers, candidate tactic descriptions, and a deadline to the local broker. The broker forwards that payload to TypeSafe. Helper requests send the rendered focused state and sibling-state identity to OpenRouter. These strings can contain theorem statements, local hypotheses, names, and values from the active proof state. Do not enable provider calls for source or proof states that you cannot disclose to the configured services. Broker requests and responses are newline-delimited JSON frames bounded to 1,000,000 bytes.
+
+## Credential-free verification
+
+Run the fast offline suite:
+
+```bash
+./test.sh
+```
+
+It builds `JevLean`, runs Lean tactic and broker tests, Python unit tests, fresh-source replay regressions, and checks the committed synthetic metrics. It uses a deterministic local broker and makes no paid calls. The suite checks that tracked files are unchanged. If `lean-cache` is installed it may print host-cache status or cache-miss warnings; those are not project diagnostics. Lean, Python, or replay warnings and failures are project results and should be investigated.
+
+The historical Pantograph feasibility spike is slower and optional:
+
+```bash
+RUN_PANTOGRAPH_SPIKE=1 ./test.sh
+```
+
+It can take several minutes because it starts isolated Lean workers. The miniF2F and LeanDojo runners are separate benchmark workflows with pinned environments; see [MINIF2F.md](MINIF2F.md) and [BENCHMARK4.md](BENCHMARK4.md).
+
+## Evidence and limitations
+
+- [REPORT.md](REPORT.md) records the synthetic ranking studies.
+- [CALIBRATION_REPORT.md](CALIBRATION_REPORT.md) records bounded search calibration.
+- [PANTOGRAPH_SPIKE.md](PANTOGRAPH_SPIKE.md) preserves the external-worker feasibility evidence.
+- [EXTERNAL_BENCHMARKS.md](EXTERNAL_BENCHMARKS.md) compares the benchmark protocols.
+- [DESIGN.md](DESIGN.md) describes the implemented boundaries and remaining design limits.
+
+The strongest evidence is controlled next-action ranking and small bounded search. The current retrieval policy is bounded and heuristic. Provider availability, latency, and ranking quality affect `jev?`. Tactic execution is bounded cooperatively inside Lean, so a Lean tactic that does not yield can still hurt editor responsiveness. Optional helper propositions are untrusted: Lean parses and checks them, and search must prove both the helper and original goal.
+
+## License and third-party data
+
+The project is licensed under Apache License 2.0; see [LICENSE](LICENSE). [NOTICE](NOTICE) records the pinned miniF2F and Mathlib-derived data included in this repository. The miniF2F manifest contains ported statements, not upstream proof bodies or docstrings.

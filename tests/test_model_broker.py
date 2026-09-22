@@ -5,7 +5,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock
 
-from jevlean.model_broker import BrokerServer, ModelBroker, PROTOCOL, validate_frame
+from jevlean.model_broker import BrokerServer, MAX_FRAME_BYTES, ModelBroker, PROTOCOL, validate_frame
 
 REQUEST = {"focused_goal": "⊢ P", "pending_sibling_goals": [], "path": [], "actions": [{"id": "A1", "tactic": "assumption"}]}
 STATE = {"focused_goal": "⊢ P", "canonical_state": "P"}
@@ -42,6 +42,18 @@ class ModelBrokerTests(unittest.TestCase):
         self.helper.generate.side_effect = RuntimeError("provider failed")
         self.assertEqual(call(self.server.server_address, frame)["proposals"], [])
         self.assertTrue(call(self.server.server_address, {"operation": "rank", "request": REQUEST, "deadline_ms": 1000})["ok"])
+
+    def test_outgoing_provider_trace_cannot_exceed_frame_limit(self):
+        self.helper.generate.return_value = (
+            [{"proposition": "P", "rationale": "useful"}],
+            {"usage": {"provider_detail": "x" * MAX_FRAME_BYTES}},
+        )
+        frame = {"operation": "helpers", "state": STATE, "max_proposals": 1, "deadline_ms": 1000}
+        with socket.create_connection(self.server.server_address, timeout=1) as connection:
+            connection.sendall(json.dumps(frame).encode() + b"\n")
+            raw = connection.makefile("rb").readline(MAX_FRAME_BYTES + 1)
+        self.assertLessEqual(len(raw), MAX_FRAME_BYTES)
+        self.assertEqual(json.loads(raw), {"ok": False, "error": "response frame exceeds limit"})
 
     def test_concurrent_clients_share_the_service_without_cross_route_failure(self):
         rank = {"operation": "rank", "request": REQUEST, "deadline_ms": 1000}

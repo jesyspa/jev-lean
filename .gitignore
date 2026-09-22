@@ -1,3 +1,6 @@
 __pycache__/
 *.py[cod]
 .lake/
+.env
+.env.*
+!.env.example

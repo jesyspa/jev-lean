@@ -79,17 +79,12 @@ No fallback generative LLM was called. The trace stores public payload hashes, e
 - Random results are seeded Monte Carlo estimates. The oracle only ranges over generated candidates.
 - Structural routing measures whether a supplied patch is needed under this bounded catalog, not whether no direct Lean proof exists.
 
-The next useful study should run the controller against real frozen theorem holes, extract successor states from Lean, retrieve from a full declaration index, and compare policies at matched Lean CPU budgets.
+A broader evaluation needs real frozen theorem holes, successor states extracted from Lean, a full declaration index, and policy comparisons at matched Lean CPU budgets.
 
 ## Reproduce
 
 ```bash
-lean-cache use .
-lean-cache check-env
-lean-cache build --wait .
-python3 -m unittest discover -s tests -v
-python3 -m jevlean.progress check-lean
-python3 -m jevlean.progress metrics
+./test.sh
 ```
 
-Replay and Lean verification need no network credential. Do not run `freeze` unless intentionally defining a new experiment.
+Replay and Lean verification need no network credential. `test.sh` uses Lake directly when the optional `lean-cache` command is unavailable. Do not run `freeze` unless intentionally defining a new experiment.

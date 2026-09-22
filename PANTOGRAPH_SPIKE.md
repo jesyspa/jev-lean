@@ -2,7 +2,7 @@
 
 ## Verdict
 
-The bounded spike records 9 passing gates and 1 blocker. Do not start the search controller from `DESIGN.md` yet.
+The retained bounded spike records 9 passing gates and 1 blocker. It evaluates an external-worker design; the active `jev?` search is Lean-native and does not depend on this spike at runtime.
 
 Pantograph is pinned to `7076ab3632b5de67a4f83ab259b23b37acaea1d0` under Lean 4.30.0. Immutable branching, fixed focused multi-goal execution, root metavariable inspection, isolated helper lineages, scoped helper declarations, frontier reconstruction, clean replay, theorem-hole extraction, and latency collection passed.
 
@@ -12,21 +12,13 @@ The source-level lineage adapter is thin enough for the passing helper and recov
 
 ## Reproduction
 
-Run setup, builds, and the full test suite from the repository root:
+Run the spike and the full credential-free suite from the repository root:
 
 ```bash
-/opt/bots/bin/lean-cache use .
-/opt/bots/bin/lean-cache check-env
-/opt/bots/bin/lean-cache build --wait . @pantograph/repl @/JevLean
-PANTOGRAPH_SPIKE_RESULTS=artifacts/pantograph-spike-results.json \
-  python3 -m unittest discover -s tests -v
-python3 -m jevlean.experiment check-lean
-python3 -m jevlean.experiment metrics >/dev/null
-python3 -m jevlean.progress check-lean
-python3 -m jevlean.progress metrics >/dev/null
+RUN_PANTOGRAPH_SPIKE=1 ./test.sh
 ```
 
-`./test.sh` runs the same sequence. The verified suite completed 32 Python tests and 30 existing Lean tactic cases without test failures. Feasibility blockers are asserted as measured outcomes, so the test suite remains executable while the artifact carries the gate verdict.
+The default `./test.sh` skips this slow integration run. With the flag set, the harness builds Pantograph, writes new spike output to a temporary file, and checks the recorded gates without modifying `artifacts/pantograph-spike-results.json`. Feasibility blockers are asserted as measured outcomes, so the suite can pass while the artifact carries the gate verdict.
 
 ## Recorded gates
 

@@ -173,11 +173,18 @@ class ModelBroker:
             return {"ok": True, "proposals": [], "source": "failed", "error": safe_error(error)}
 
 
+def _encode_frame(reply: dict[str, Any]) -> bytes:
+    encoded = canonical_json(reply) + b"\n"
+    if len(encoded) <= MAX_FRAME_BYTES:
+        return encoded
+    return canonical_json({"ok": False, "error": "response frame exceeds limit"}) + b"\n"
+
+
 class _Handler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
         try: reply = self.server.broker.handle(_read_frame(self.rfile))  # type: ignore[attr-defined]
         except (BrokerError, TypeSafeError, TimeoutError, ValueError, OSError, RuntimeError) as error: reply = {"ok": False, "error": safe_error(error)}
-        self.wfile.write(canonical_json(reply) + b"\n")
+        self.wfile.write(_encode_frame(reply))
 
 
 class BrokerServer(socketserver.ThreadingTCPServer):
