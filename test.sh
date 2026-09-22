@@ -51,7 +51,7 @@ broker_pid=
 rm -f "$broker_log"
 broker_log=
 
-python3 -m unittest discover -s tests -v
+env -u PANTOGRAPH_SPIKE_RESULTS RUN_PANTOGRAPH_SPIKE=0 python3 -m unittest discover -s tests -v
 python3 -m jevlean.experiment check-lean
 python3 -m jevlean.experiment metrics >/dev/null
 python3 -m jevlean.progress check-lean
@@ -64,5 +64,5 @@ if [[ ${RUN_PANTOGRAPH_SPIKE:-0} == 1 ]]; then
   else
     lake build @pantograph/repl
   fi
-  PANTOGRAPH_SPIKE_RESULTS="$(mktemp)" python3 -m unittest tests.test_pantograph_spike -v
+  env -u PANTOGRAPH_SPIKE_RESULTS python3 -m unittest tests.test_pantograph_spike -v
 fi

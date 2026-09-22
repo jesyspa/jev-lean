@@ -179,15 +179,15 @@ elab "jev_test_helper_replay_source" : tactic => withMainContext do
   unless suggestion.startsWith "refine (let jev_h1 : P := ?_; ?_)" &&
       suggestion.contains "\n  · assumption\n  · assumption" do
     throwError "helper replay did not use fresh replayable source:\n{suggestion}"
-  let file : System.FilePath := "/tmp/jevlean-helper-replay-regression.lean"
   let source := "import JevLean\n\nexample (P Q : Prop) (hp : P) (hq : Q) : Q := by\n  have jev_h : P := hp\n  " ++ suggestion ++ "\n"
-  IO.FS.writeFile file source
-  let output ← IO.Process.output {
-    cmd := "lake"
-    args := #["env", "lean", file.toString]
-    cwd := some "."
-  }
-  IO.FS.removeFile file
+  let output ← IO.FS.withTempDir fun directory => do
+    let file := directory / "Replay.lean"
+    IO.FS.writeFile file source
+    IO.Process.output {
+      cmd := "lake"
+      args := #["env", "lean", file.toString]
+      cwd := some "."
+    }
   unless output.exitCode == 0 do
     throwError "fresh Lean process rejected helper replay source:\n{output.stderr}"
 
