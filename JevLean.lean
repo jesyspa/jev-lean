@@ -100,12 +100,12 @@ private def hasReplayableUserName (decl : LocalDecl) : Bool :=
 
 private def closingActions : TacticM (List Action) := do
   pure [
-    { tacticSyntax := ← `(tactic| rfl), text := "rfl" },
-    { tacticSyntax := ← `(tactic| assumption), text := "assumption" },
-    { tacticSyntax := ← `(tactic| simp), text := "simp" },
-    { tacticSyntax := ← `(tactic| omega), text := "omega" },
+    { tacticSyntax := ← `(tactic| rfl), text := "rfl", family := "closing" },
+    { tacticSyntax := ← `(tactic| assumption), text := "assumption", family := "closing" },
+    { tacticSyntax := ← `(tactic| simp), text := "simp", family := "closing" },
+    { tacticSyntax := ← `(tactic| omega), text := "omega", family := "closing" },
     { tacticSyntax := ← `(tactic| aesop (config := { terminal := true, maxRuleApplications := 32 })),
-      text := "aesop (config := { terminal := true, maxRuleApplications := 32 })" }
+      text := "aesop (config := { terminal := true, maxRuleApplications := 32 })", family := "closing" }
   ]
 
 private def candidateWorks (action : Action) : TacticM Bool := do
@@ -737,23 +737,44 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
           return (none, { metrics with elapsedMs := elapsed - start })
         else
           node.restore
-          let (actions, calls, helperRequested, helperActionCount) ← withMainContext do
-            let actions ← source config
-            let actions := withoutRepeatedUnfolds node.path actions
+          let actions ← withMainContext do
+            return withoutRepeatedUnfolds node.path (← source config)
+          let deadline := start + config.maxWallMs
+          -- Close the entire state locally before paying for a ranking request.
+          let closers := (actions.filter (·.family == "closing")).mergeSort
+            (fun a b => a.cost <= b.cost)
+          let mut directAttempts := 0
+          let mut directClosed : Option Node := none
+          for action in closers do
+            if directClosed.isNone && attempts + directAttempts < config.maxHeartbeats then
+              let (successors, used) ← expandUpTo node [action] 1 (some deadline)
+              directAttempts := directAttempts + used
+              directClosed := successors.find? fun successor =>
+                successor.goals.isEmpty && successor.depth <= config.maxDepth &&
+                  successor.cost <= config.maxCost
+          if let some closed := directClosed then
+            let now ← IO.monoMsNow
+            return (some closed, { metrics with
+              expandedNodes := metrics.expandedNodes + 1
+              attemptedTransitions := metrics.attemptedTransitions + directAttempts
+              elapsedMs := now - start })
+          let now ← IO.monoMsNow
+          if attempts + directAttempts >= config.maxHeartbeats || now >= deadline then
+            return (none, { metrics with
+              attemptedTransitions := metrics.attemptedTransitions + directAttempts
+              elapsedMs := now - start })
+          let (actions, context, helperRequested, helperActionCount) ← withMainContext do
             let context ← rankContext node
             let helperRequested := config.enableLlmHelpers &&
               helperNeedProbability context >= config.helperProbabilityThreshold
             let helperCuts ← if helperRequested then helperActions config context else pure []
-            let actions := helperCuts ++ actions
-            if calls >= config.maxJevCalls then
-              pure (actions, calls, helperRequested, helperCuts.length)
-            else
-              let now ← IO.monoMsNow
-              let context := { context with remainingWallMs := start + config.maxWallMs - now }
-              return (← ranker context actions, calls + 1, helperRequested, helperCuts.length)
-          let remainingAttempts := config.maxHeartbeats - attempts
-          let deadline := start + config.maxWallMs
-          let (successors, usedAttempts) ← expandUpTo node actions remainingAttempts (some deadline)
+            pure (helperCuts ++ actions, context, helperRequested, helperCuts.length)
+          let (actions, calls) ← if calls >= config.maxJevCalls then pure (actions, calls) else do
+            let now ← IO.monoMsNow
+            let context := { context with remainingWallMs := deadline - now }
+            pure (← ranker context actions, calls + 1)
+          let (successors, usedAttempts) ← expandUpTo node actions
+            (config.maxHeartbeats - attempts - directAttempts) (some deadline)
           let successors := successors.filter fun successor =>
             successor.depth <= config.maxDepth && successor.cost <= config.maxCost
           let mut table := table
@@ -771,7 +792,7 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
             jevCalls := calls
             helperRequests := metrics.helperRequests + if helperRequested then 1 else 0
             helperActions := metrics.helperActions + helperActionCount
-            attemptedTransitions := metrics.attemptedTransitions + usedAttempts
+            attemptedTransitions := metrics.attemptedTransitions + directAttempts + usedAttempts
             admittedSuccessors := metrics.admittedSuccessors + admitted.length
             duplicateSuccessors := metrics.duplicateSuccessors + duplicates
             repeatedActionFamilies := metrics.repeatedActionFamilies + familyRepeats actions
@@ -779,7 +800,7 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
             elapsedMs := now - start }
           if let some closed := admitted.find? fun successor => successor.goals.isEmpty then
             return (some closed, metrics)
-          visit (admitted ++ rest) table nodeFuel (attempts + usedAttempts) calls metrics
+          visit (admitted ++ rest) table nodeFuel (attempts + directAttempts + usedAttempts) calls metrics
   try
     visit [root] (([(root.fingerprint, root.cost)] : List (String × Nat)).take config.maxTranspositions)
       config.maxNodes 0 0 {}

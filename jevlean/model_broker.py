@@ -101,11 +101,17 @@ class PersistentTypeSafeClient:
 
     def evaluate(self, request: dict[str, Any], timeout: float) -> dict[str, Any]:
         if timeout <= 0: raise TimeoutError("ranking deadline exceeded")
-        with self.lock:
+        started = time.monotonic()
+        if not self.lock.acquire(timeout=timeout):
+            raise TimeoutError("ranking deadline exceeded while waiting for provider")
+        try:
+            remaining = timeout - (time.monotonic() - started)
+            if remaining <= 0:
+                raise TimeoutError("ranking deadline exceeded while waiting for provider")
             try:
-                if self.connection is None: self.connection = http.client.HTTPSConnection(self.host, self.port, timeout=timeout)
-                self.connection.timeout = timeout
-                if self.connection.sock is not None: self.connection.sock.settimeout(timeout)
+                if self.connection is None: self.connection = http.client.HTTPSConnection(self.host, self.port, timeout=remaining)
+                self.connection.timeout = remaining
+                if self.connection.sock is not None: self.connection.sock.settimeout(remaining)
                 self.connection.request("POST", self.path, canonical_json(request), {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "User-Agent": "jev-lean-broker/1"})
                 response = self.connection.getresponse(); raw = response.read()
                 if not 200 <= response.status < 300: raise TypeSafeError(f"TypeSafe HTTP {response.status}")
@@ -116,6 +122,8 @@ class PersistentTypeSafeClient:
                 if self.connection is not None: self.connection.close()
                 self.connection = None
                 raise
+        finally:
+            self.lock.release()
 
 
 class PersistentOpenRouterClient(OpenRouterClient):
@@ -127,11 +135,18 @@ class PersistentOpenRouterClient(OpenRouterClient):
 
     def generate(self, state: dict[str, Any], maximum: int, deadline_ms: int) -> tuple[list[dict[str, str]], dict[str, Any]]:
         model = os.environ.get("JEV_HELPER_MODEL", "openai/gpt-4o-mini")
-        with self.lock:
+        timeout = deadline_ms / 1000
+        started = time.monotonic()
+        if not self.lock.acquire(timeout=timeout):
+            raise TimeoutError("helper deadline exceeded while waiting for provider")
+        try:
+            remaining = timeout - (time.monotonic() - started)
+            if remaining <= 0:
+                raise TimeoutError("helper deadline exceeded while waiting for provider")
             try:
-                if self.connection is None: self.connection = http.client.HTTPSConnection(self.host, self.port, timeout=deadline_ms / 1000)
-                self.connection.timeout = deadline_ms / 1000
-                if self.connection.sock is not None: self.connection.sock.settimeout(deadline_ms / 1000)
+                if self.connection is None: self.connection = http.client.HTTPSConnection(self.host, self.port, timeout=remaining)
+                self.connection.timeout = remaining
+                if self.connection.sock is not None: self.connection.sock.settimeout(remaining)
                 self.connection.request("POST", self.path, canonical_json(helper_payload(state, maximum, model)), {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "User-Agent": "jev-lean-broker/1"})
                 response = self.connection.getresponse(); raw = response.read()
                 if not 200 <= response.status < 300: raise HelperError(f"OpenRouter HTTP {response.status}")
@@ -142,6 +157,8 @@ class PersistentOpenRouterClient(OpenRouterClient):
                 if self.connection is not None: self.connection.close()
                 self.connection = None
                 raise
+        finally:
+            self.lock.release()
 
 
 class ModelBroker:

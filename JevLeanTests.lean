@@ -409,10 +409,21 @@ elab "jev_test_unfold_avoids_irrelevant_definitions" : tactic => withMainContext
   evalTactic (← `(tactic| unfold Doubled.length_R; exact ⟨True.intro, rfl⟩))
 
 elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
-  let some node ← searchWith { maxDepth := 2, maxCost := 2 } catalogue aesopFirst
+  let source : ActionSource := fun config =>
+    return (← catalogue config).map fun action => { action with family := "ranked" }
+  let some node ← searchWith { maxDepth := 2, maxCost := 2 } source aesopFirst
     | throwError "aesop-first search found no path"
   unless node.path.head?.map (·.text.startsWith "aesop") == some true do
     throwError "injected rank order was not respected"
+  replay node.path
+
+elab "jev_test_direct_closure" : tactic => withMainContext do
+  let unavailableRanker : ActionRanker := fun _ _ => throwError "direct closure called ranker"
+  let (some node, metrics) ← searchWithMetrics {} catalogue unavailableRanker
+    | throwError "direct closure did not succeed"
+  unless node.path.map (·.text) == ["rfl"] && metrics.jevCalls == 0 &&
+      metrics.attemptedTransitions == 1 do
+    throwError "direct closure did not prefer rfl without ranking: {node.path.map (·.text)}"
   replay node.path
 
 elab "jev_test_custom_disjunction" : tactic => withMainContext do
@@ -629,9 +640,12 @@ example (xs : List Nat) : Doubled.length_R xs := by
 example (xs : List Nat) : Doubled.length_R xs := by
   jev_test_unfold_avoids_irrelevant_definitions
 
-/-- Tests can force aesop first and do not assume a structural action wins ranking. -/
+/-- Tests can force aesop first when actions are passed to the ranker. -/
 example (P : Prop) : P → P := by
   jev_test_aesop_rank_seam
+
+example (n : Nat) : n = n := by
+  jev_test_direct_closure
 
 /-- The formatted multi-line suggestion replays with explicit branches. -/
 example (P : Prop) : P → P ∧ P := by

@@ -5,7 +5,10 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock
 
-from jevlean.model_broker import BrokerServer, MAX_FRAME_BYTES, ModelBroker, PROTOCOL, validate_frame
+from jevlean.model_broker import (
+    BrokerServer, MAX_FRAME_BYTES, ModelBroker, PersistentOpenRouterClient,
+    PersistentTypeSafeClient, PROTOCOL, validate_frame,
+)
 
 REQUEST = {"focused_goal": "⊢ P", "pending_sibling_goals": [], "path": [], "actions": [{"id": "A1", "tactic": "assumption"}]}
 STATE = {"focused_goal": "⊢ P", "canonical_state": "P"}
@@ -66,6 +69,21 @@ class ModelBrokerTests(unittest.TestCase):
     def test_second_service_cannot_attach_to_or_replace_the_first(self):
         with self.assertRaises(OSError):
             BrokerServer(self.server.server_address, ModelBroker())
+
+    def test_queued_provider_requests_expire_before_network_io(self):
+        rank = PersistentTypeSafeClient("test")
+        helper = PersistentOpenRouterClient("test")
+        for client, invoke in (
+            (rank, lambda: rank.evaluate({}, 0.01)),
+            (helper, lambda: helper.generate(STATE, 1, 10)),
+        ):
+            client.lock.acquire()
+            try:
+                with self.assertRaises(TimeoutError):
+                    invoke()
+                self.assertIsNone(client.connection)
+            finally:
+                client.lock.release()
 
 
 if __name__ == "__main__": unittest.main()
