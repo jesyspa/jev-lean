@@ -10,6 +10,7 @@ import argparse
 import http.client
 import json
 import os
+import socket
 import socketserver
 import threading
 import time
@@ -26,6 +27,8 @@ from .rank import fallback, payload as rank_payload, ranking_from_response, vali
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 MAX_FRAME_BYTES = 1_000_000
+FRAME_READ_TIMEOUT = 30.0  # Allow Lean clients ample time to send a complete local frame.
+MAX_CONCURRENT_HANDLERS = 64  # Accommodate parallel Lean searches while bounding worker resources.
 PROTOCOL = "jev-model-broker/1"
 
 
@@ -41,12 +44,25 @@ def safe_error(error: BaseException) -> str:
     return text[:500]
 
 
-def _read_frame(handle: Any) -> dict[str, Any]:
-    raw = handle.readline(MAX_FRAME_BYTES + 1)
-    if not raw:
-        raise BrokerError("missing request frame")
-    if len(raw) > MAX_FRAME_BYTES or not raw.endswith(b"\n"):
-        raise BrokerError("request frame exceeds limit")
+def _read_frame(connection: socket.socket, timeout: float) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout
+    raw = bytearray()
+    while not raw.endswith(b"\n"):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise BrokerError("request frame read deadline exceeded")
+        connection.settimeout(remaining)
+        try:
+            chunk = connection.recv(min(65536, MAX_FRAME_BYTES + 1 - len(raw)))
+        except TimeoutError as error:
+            raise BrokerError("request frame read deadline exceeded") from error
+        if not chunk:
+            if not raw:
+                raise BrokerError("missing request frame")
+            raise BrokerError("request frame exceeds limit")
+        raw.extend(chunk.split(b"\n", 1)[0] + b"\n" if b"\n" in chunk else chunk)
+        if len(raw) > MAX_FRAME_BYTES:
+            raise BrokerError("request frame exceeds limit")
     try:
         result = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -199,17 +215,53 @@ def _encode_frame(reply: dict[str, Any]) -> bytes:
 
 class _Handler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
-        try: reply = self.server.broker.handle(_read_frame(self.rfile))  # type: ignore[attr-defined]
-        except (BrokerError, TypeSafeError, TimeoutError, ValueError, OSError, RuntimeError, http.client.HTTPException) as error: reply = {"ok": False, "error": safe_error(error)}
-        self.wfile.write(_encode_frame(reply))
+        try:
+            frame = _read_frame(self.connection, self.server.frame_read_timeout)
+            reply = self.server.broker.handle(frame)
+        except (BrokerError, TypeSafeError, TimeoutError, ValueError, OSError, RuntimeError, http.client.HTTPException) as error:
+            reply = {"ok": False, "error": safe_error(error)}
+        try:
+            self.connection.settimeout(self.server.frame_read_timeout)
+            self.wfile.write(_encode_frame(reply))
+        except OSError:
+            pass  # Disconnected or non-reading clients must not retain a handler.
 
 
 class BrokerServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = False
     request_queue_size = 64
     daemon_threads = True
-    def __init__(self, address: tuple[str, int], broker: ModelBroker) -> None:
-        super().__init__(address, _Handler); self.broker = broker
+    def __init__(self, address: tuple[str, int], broker: ModelBroker, *,
+                 frame_read_timeout: float = FRAME_READ_TIMEOUT,
+                 max_handlers: int = MAX_CONCURRENT_HANDLERS) -> None:
+        if frame_read_timeout <= 0 or max_handlers <= 0:
+            raise ValueError("frame_read_timeout and max_handlers must be positive")
+        self.broker = broker
+        self.frame_read_timeout = frame_read_timeout
+        self._handler_slots = threading.BoundedSemaphore(max_handlers)
+        super().__init__(address, _Handler)
+
+    def process_request(self, request: socket.socket, client_address: Any) -> None:
+        if not self._handler_slots.acquire(blocking=False):
+            try:
+                request.setblocking(False)
+                request.sendall(_encode_frame({"ok": False, "error": "broker handler limit reached"}))
+            except OSError:
+                pass
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._handler_slots.release()
+            raise
+
+    def process_request_thread(self, request: socket.socket, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._handler_slots.release()
 
 
 def main() -> None:

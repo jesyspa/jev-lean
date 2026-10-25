@@ -4,6 +4,7 @@ import socket
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from unittest.mock import Mock
 
 from jevlean.model_broker import (
@@ -19,6 +20,61 @@ def call(address, frame):
     with socket.create_connection(address, timeout=1) as connection:
         connection.sendall(json.dumps(frame).encode() + b"\n")
         return json.loads(connection.makefile("rb").readline())
+
+
+@contextmanager
+def running_broker(broker, **limits):
+    with BrokerServer(("127.0.0.1", 0), broker, **limits) as server:
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        thread.start()
+        try:
+            yield server.server_address
+        finally:
+            server.shutdown()
+            thread.join()
+
+
+class BrokerResourceLimitTests(unittest.TestCase):
+    def test_partial_frame_times_out_with_error_and_connection_closes(self):
+        with running_broker(ModelBroker(), frame_read_timeout=0.03) as address:
+            with socket.create_connection(address, timeout=1) as connection:
+                connection.sendall(b"{")
+                with connection.makefile("rb") as stream:
+                    self.assertEqual(json.loads(stream.readline()), {
+                        "ok": False, "error": "request frame read deadline exceeded",
+                    })
+                    self.assertEqual(stream.read(1), b"")
+            self.assertTrue(call(address, {"operation": "health"})["ok"])
+
+    def test_connections_over_handler_cap_are_rejected_without_provider_call(self):
+        entered = threading.Event()
+        release = threading.Event()
+
+        def evaluate(request, timeout):
+            entered.set()
+            if not release.wait(2):
+                raise RuntimeError("test did not release provider")
+            return {"model": "rank-model", "answers": {"ranking": {"type": "choice", "choice": "A1", "probabilities": {"A1": 1}}}}
+
+        rank = Mock()
+        rank.evaluate.side_effect = evaluate
+        frame = {"operation": "rank", "request": REQUEST, "deadline_ms": 1000}
+        with running_broker(ModelBroker(rank_client=rank), max_handlers=1) as address:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                active = pool.submit(call, address, frame)
+                try:
+                    self.assertTrue(entered.wait(1))
+                    with socket.create_connection(address, timeout=1) as excess:
+                        with excess.makefile("rb") as stream:
+                            self.assertEqual(json.loads(stream.readline()), {
+                                "ok": False, "error": "broker handler limit reached",
+                            })
+                            self.assertEqual(stream.read(1), b"")
+                    self.assertEqual(rank.evaluate.call_count, 1)
+                finally:
+                    release.set()
+                reply = active.result(timeout=1)
+                self.assertTrue(reply["ok"], reply)
 
 
 class ModelBrokerTests(unittest.TestCase):
