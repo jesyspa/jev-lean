@@ -186,7 +186,7 @@ class ModelBroker:
         try:
             proposals, provider_trace = self.helper_client.generate(request["state"], request["maximum"], int(timeout * 1000))
             return {"ok": True, "proposals": proposals, "source": "openrouter", **provider_trace}
-        except (HelperError, OSError, TimeoutError, ValueError, RuntimeError) as error:
+        except (HelperError, OSError, TimeoutError, ValueError, RuntimeError, http.client.HTTPException) as error:
             return {"ok": True, "proposals": [], "source": "failed", "error": safe_error(error)}
 
 
@@ -200,7 +200,7 @@ def _encode_frame(reply: dict[str, Any]) -> bytes:
 class _Handler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
         try: reply = self.server.broker.handle(_read_frame(self.rfile))  # type: ignore[attr-defined]
-        except (BrokerError, TypeSafeError, TimeoutError, ValueError, OSError, RuntimeError) as error: reply = {"ok": False, "error": safe_error(error)}
+        except (BrokerError, TypeSafeError, TimeoutError, ValueError, OSError, RuntimeError, http.client.HTTPException) as error: reply = {"ok": False, "error": safe_error(error)}
         self.wfile.write(_encode_frame(reply))
 
 

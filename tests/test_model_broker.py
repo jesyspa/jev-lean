@@ -1,3 +1,4 @@
+import http.client
 import json
 import socket
 import threading
@@ -45,6 +46,18 @@ class ModelBrokerTests(unittest.TestCase):
         self.helper.generate.side_effect = RuntimeError("provider failed")
         self.assertEqual(call(self.server.server_address, frame)["proposals"], [])
         self.assertTrue(call(self.server.server_address, {"operation": "rank", "request": REQUEST, "deadline_ms": 1000})["ok"])
+
+    def test_http_protocol_failures_preserve_route_error_contracts(self):
+        helper_frame = {"operation": "helpers", "state": STATE, "max_proposals": 1, "deadline_ms": 1000}
+        rank_frame = {"operation": "rank", "request": REQUEST, "deadline_ms": 1000}
+        for error in (http.client.BadStatusLine("not HTTP"), http.client.IncompleteRead(b"partial", 10)):
+            with self.subTest(error=type(error).__name__):
+                self.helper.generate.side_effect = error
+                helper_reply = {"ok": True, "proposals": [], "source": "failed", "error": str(error)}
+                self.assertEqual(self.server.broker.handle(helper_frame), helper_reply)
+                self.assertEqual(call(self.server.server_address, helper_frame), helper_reply)
+                self.rank.evaluate.side_effect = error
+                self.assertEqual(call(self.server.server_address, rank_frame), {"ok": False, "error": str(error)})
 
     def test_outgoing_provider_trace_cannot_exceed_frame_limit(self):
         self.helper.generate.return_value = (
