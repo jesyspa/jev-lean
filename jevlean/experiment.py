@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from . import MODEL
+from .frozen import verify_or_regenerate
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "benchmark.json"
@@ -220,8 +221,10 @@ def _lean_path() -> str:
     return os.pathsep.join(str(path) for path in paths)
 
 
-def check_lean(outcome_path: Path = DEFAULT_OUTCOMES, timeout: float = 600.0) -> dict[str, Any]:
-    """Check the full action matrix in one Lean process to limit memory pressure."""
+def check_lean(
+    outcome_path: Path = DEFAULT_OUTCOMES, timeout: float = 600.0, *, regenerate: bool = False
+) -> dict[str, Any]:
+    """Verify the full action matrix against frozen outcomes, unless regenerating explicitly."""
     data = load_benchmark()
     markers: list[tuple[str, str]] = []
     chunks = [
@@ -273,8 +276,10 @@ def check_lean(outcome_path: Path = DEFAULT_OUTCOMES, timeout: float = 600.0) ->
     missing = [case_id for case_id, values in normalized["cases"].items() if not any(values.values())]
     if missing:
         raise RuntimeError(f"catalog has no verified successful action for: {', '.join(missing)}")
-    outcome_path.parent.mkdir(parents=True, exist_ok=True)
-    outcome_path.write_text(json.dumps(normalized, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    verify_or_regenerate(
+        outcome_path, normalized, regenerate=regenerate,
+        command="python3 -m jevlean.experiment check-lean",
+    )
     return normalized
 
 
@@ -425,12 +430,13 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     check_parser = subparsers.add_parser("check-lean", help="verify every tactic transition with one Lean process")
     check_parser.add_argument("--timeout", type=float, default=600.0)
+    check_parser.add_argument("--regenerate", action="store_true", help="replace frozen outcomes instead of verifying them")
     subparsers.add_parser("live", help="run the pinned Jev experiment and replace the trace")
     subparsers.add_parser("metrics", help="print metrics from committed trace and Lean outcomes")
     args = parser.parse_args()
     if args.command == "check-lean":
-        result = check_lean(timeout=args.timeout)
-        print(f"verified {len(result['cases'])} tactic cases")
+        result = check_lean(timeout=args.timeout, regenerate=args.regenerate)
+        print(f"{'regenerated' if args.regenerate else 'verified'} {len(result['cases'])} tactic cases")
     elif args.command == "live":
         records = run_live()
         print(f"wrote {len(records)} safe trace records to {DEFAULT_TRACE.relative_to(ROOT)}")

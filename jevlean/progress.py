@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from . import MODEL
+from .frozen import verify_or_regenerate
 from .experiment import TypeSafeClient, canonical_json, payload_hash
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -307,7 +308,10 @@ def _lemma_tactic(name: str, arguments: list[str]) -> str:
     return f"exact {application}"
 
 
-def check_lean(timeout: float = 900.0) -> dict[str, Any]:
+def check_lean(
+    timeout: float = 900.0, *, outcome_path: Path = OUTCOME_PATH, regenerate: bool = False
+) -> dict[str, Any]:
+    """Verify generated outcomes without changing the oracle unless explicitly requested."""
     data = load_data()
     chunks = ["import JevLean\nimport Mathlib\n", "set_option linter.unreachableTactic false\nset_option linter.unusedTactic false\n"]
     progress_meta: list[tuple[str, str]] = []
@@ -369,7 +373,10 @@ def check_lean(timeout: float = 900.0) -> dict[str, Any]:
         "routing": routing,
         "helper_patches_verified": {case["id"]: True for case in data["routing_cases"]},
     }
-    OUTCOME_PATH.write_text(json.dumps(result_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    verify_or_regenerate(
+        outcome_path, result_data, regenerate=regenerate,
+        command="python3 -m jevlean.progress check-lean",
+    )
     return result_data
 
 
@@ -479,8 +486,9 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("freeze")
     subparsers.add_parser("live")
-    checker = subparsers.add_parser("check-lean")
+    checker = subparsers.add_parser("check-lean", help="verify generated outcomes against the frozen oracle")
     checker.add_argument("--timeout", type=float, default=900.0)
+    checker.add_argument("--regenerate", action="store_true", help="replace frozen outcomes instead of verifying them")
     subparsers.add_parser("metrics")
     args = parser.parse_args()
     if args.command == "freeze":
@@ -489,8 +497,8 @@ def main() -> None:
     elif args.command == "live":
         print(f"wrote {len(run_live())} trace records")
     elif args.command == "check-lean":
-        result = check_lean(args.timeout)
-        print(f"verified {len(result['progress'])} progress cases")
+        result = check_lean(args.timeout, regenerate=args.regenerate)
+        print(f"{'regenerated' if args.regenerate else 'verified'} {len(result['progress'])} progress cases")
     else:
         print(json.dumps(compute_metrics(), indent=2, sort_keys=True))
 

@@ -52,9 +52,11 @@ rm -f "$broker_log"
 broker_log=
 
 env -u PANTOGRAPH_SPIKE_RESULTS RUN_PANTOGRAPH_SPIKE=0 python3 -m unittest discover -s tests -v
+# Verify both frozen oracles read-only before reporting metrics.
+# Intentional updates use check-lean --regenerate outside this suite.
 python3 -m jevlean.experiment check-lean
-python3 -m jevlean.experiment metrics >/dev/null
 python3 -m jevlean.progress check-lean
+python3 -m jevlean.experiment metrics >/dev/null
 python3 -m jevlean.progress metrics >/dev/null
 
 if [[ ${RUN_PANTOGRAPH_SPIKE:-0} == 1 ]]; then
