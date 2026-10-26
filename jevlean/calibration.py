@@ -20,6 +20,15 @@ FIELDS = (
     "transposition_entries", "wall_ms",
 )
 LINE = re.compile(r"JEV_CALIBRATION::(.+)")
+# Frozen solve and replay outcomes; changes require an explicit expectation update.
+EXPECTED_BASELINE = {
+    "local_baseline": True,
+    "retrieval": True,
+    "rewrite": False,
+    "unfolding": True,
+    "local_application": True,
+    "structural": False,
+}
 
 
 def run(timeout: float = 180.0) -> list[dict[str, Any]]:
@@ -73,13 +82,25 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def check(summary: dict[str, Any]) -> None:
-    modes = summary["modes"]
-    if modes["pre_work"]["fixtures"] != 6 or modes["accumulated"]["fixtures"] != 6:
-        raise RuntimeError("fixture set changed")
-    if modes["accumulated"]["solved"] < modes["pre_work"]["solved"]:
-        raise RuntimeError("accumulated features regressed solve count")
-    if modes["accumulated"]["replay_success"] != modes["accumulated"]["solved"]:
-        raise RuntimeError("an accumulated closing path failed replay")
+    expected = {
+        (fixture, mode): baseline if mode == "pre_work" else True
+        for fixture, baseline in EXPECTED_BASELINE.items()
+        for mode in ("pre_work", "accumulated")
+    }
+    seen = set()
+    for row in summary["rows"]:
+        key = (row["fixture"], row["mode"])
+        if key not in expected or key in seen:
+            raise RuntimeError(f"fixture set changed: unexpected or duplicate {key}")
+        seen.add(key)
+        for field in ("solved", "replay_success"):
+            if row[field] != expected[key]:
+                raise RuntimeError(
+                    f"calibration outcome changed: {key} {field} "
+                    f"expected {expected[key]}, got {row[field]}"
+                )
+    if seen != expected.keys():
+        raise RuntimeError("fixture set changed: missing calibration rows")
 
 
 def main() -> None:

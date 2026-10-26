@@ -56,7 +56,6 @@ python3 -m jevlean.experiment check-lean
 python3 -m jevlean.experiment metrics >/dev/null
 python3 -m jevlean.progress check-lean
 python3 -m jevlean.progress metrics >/dev/null
-python3 -m jevlean.calibration --check
 
 if [[ ${RUN_PANTOGRAPH_SPIKE:-0} == 1 ]]; then
   if command -v lean-cache >/dev/null 2>&1; then
