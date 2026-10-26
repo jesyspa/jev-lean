@@ -14,7 +14,7 @@ import socket
 import socketserver
 import threading
 import time
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from .experiment import ENDPOINT, TypeSafeError, canonical_json
@@ -178,9 +178,11 @@ class PersistentOpenRouterClient(OpenRouterClient):
 
 
 class ModelBroker:
-    def __init__(self, rank_client: Any | None = None, helper_client: Any | None = None) -> None:
+    def __init__(self, rank_client: Any | None = None, helper_client: Any | None = None,
+                 *, clock: Callable[[], float] = time.monotonic) -> None:
         self.rank_client = rank_client
         self.helper_client = helper_client
+        self.clock = clock
 
     def handle(self, frame: Any) -> dict[str, Any]:
         operation, request, timeout = validate_frame(frame)
@@ -193,14 +195,16 @@ class ModelBroker:
             if override:
                 supplied = override.split(",")
                 if set(supplied) == set(ids) and len(supplied) == len(ids): return {"ok": True, "ranking": supplied, "source": "override"}
-            started = time.monotonic()
+            started = self.clock()
             response = self.rank_client.evaluate(rank_payload(request["context"], actions), timeout)
-            if time.monotonic() - started >= timeout: raise TimeoutError("ranking deadline exceeded")
+            if self.clock() - started >= timeout: raise TimeoutError("ranking deadline exceeded")
             return {"ok": True, "ranking": ranking_from_response(response, ids), "source": "jev", **trace(response)}
         if self.helper_client is None:
             return {"ok": True, "proposals": [], "source": "unavailable"}
         try:
+            started = self.clock()
             proposals, provider_trace = self.helper_client.generate(request["state"], request["maximum"], int(timeout * 1000))
+            if self.clock() - started >= timeout: raise TimeoutError("helper deadline exceeded")
             return {"ok": True, "proposals": proposals, "source": "openrouter", **provider_trace}
         except (HelperError, OSError, TimeoutError, ValueError, RuntimeError, http.client.HTTPException) as error:
             return {"ok": True, "proposals": [], "source": "failed", "error": safe_error(error)}

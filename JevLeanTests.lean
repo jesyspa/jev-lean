@@ -417,6 +417,42 @@ elab "jev_test_aesop_rank_seam" : tactic => withMainContext do
     throwError "injected rank order was not respected"
   replay node.path
 
+elab "jev_test_helper_deadline" : tactic => withMainContext do
+  -- The helper consumes either the theorem's remainder or its smaller configured cap.
+  -- No sleeps or external providers: the same clock drives the scheduler and helper guard.
+  for (helperMs, elapsed, expectedBudget, expectedRankCalls) in
+      [(2000, 100, 70, 0), (2000, 70, 70, 0), (20, 20, 20, 1), (20, 19, 20, 1)] do
+    let clock ← IO.mkRef 1000
+    let helperCalls ← IO.mkRef 0
+    let rankCalls ← IO.mkRef 0
+    let source : ActionSource := fun _ => do
+      clock.set 1030
+      return []
+    let provider : HelperProvider := fun _ maximum timeout => do
+      unless timeout == expectedBudget && maximum == 2 do
+        throwError "helper call did not preserve the smaller advertised budget: {timeout}"
+      helperCalls.modify (· + 1)
+      clock.modify (· + elapsed)
+      -- This would be an admissible cut if the result were on time.
+      return [("True", "test cut")]
+    let ranker : ActionRanker := fun context actions => do
+      unless context.remainingWallMs == 70 - elapsed do
+        throwError "ranker received a stale theorem budget"
+      if elapsed >= helperMs && !actions.isEmpty then
+        throwError "late helper success was admitted"
+      if elapsed < helperMs && actions.isEmpty then
+        throwError "on-time helper success was discarded"
+      rankCalls.modify (· + 1)
+      return []
+    let (result, metrics) ← searchWithMetrics
+      { maxWallMs := 100, maxHelperMs := helperMs, enableLlmHelpers := true,
+        helperProbabilityThreshold := 0, maxHelperProposals := 2 }
+      source ranker clock.get provider
+    unless result.isNone && (← helperCalls.get) == 1 &&
+        (← rankCalls.get) == expectedRankCalls && metrics.helperRequests == 1 do
+      throwError "helper exhaustion did not return normal bounded search failure"
+  evalTactic (← `(tactic| exact Or.inl True.intro))
+
 elab "jev_test_direct_closure" : tactic => withMainContext do
   let unavailableRanker : ActionRanker := fun _ _ => throwError "direct closure called ranker"
   let (some node, metrics) ← searchWithMetrics {} catalogue unavailableRanker
@@ -643,6 +679,9 @@ example (xs : List Nat) : Doubled.length_R xs := by
 /-- Tests can force aesop first when actions are passed to the ranker. -/
 example (P : Prop) : P → P := by
   jev_test_aesop_rank_seam
+
+example : True ∨ False := by
+  jev_test_helper_deadline
 
 example (n : Nat) : n = n := by
   jev_test_direct_closure

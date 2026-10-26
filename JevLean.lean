@@ -550,6 +550,7 @@ private def providerHelpers (context : RankContext) (maximum timeout : Nat) : Ta
       let rationale := proposalObject.bind fun o => (o.get? "rationale").bind fun x => x.getStr?.toOption
       return match proposition, rationale with | some p, some r => some (p, r) | _, _ => none
   catch _ => pure []
+  if (← IO.monoMsNow) >= deadline then return []
   helperCache.modify fun cache => (if cache.size >= 1024 then {} else cache).insert key result
   return result
 
@@ -576,9 +577,18 @@ def helperCutActions (proposals : List (String × String)) : TacticM (List Actio
       catch _ => pure ()
   return actions
 
-private def helperActions (config : Config) (context : RankContext) : TacticM (List Action) := do
+/-- Injectable helper transport; the last argument is the bounded call budget in milliseconds. -/
+abbrev HelperProvider := RankContext → Nat → Nat → TacticM (List (String × String))
+
+private def helperActions (config : Config) (context : RankContext) (deadline : Nat)
+    (nowMs : IO Nat) (provider : HelperProvider) : TacticM (List Action) := do
   if config.maxHelperProposals == 0 || config.maxAdmittedHelpers == 0 then return []
-  let proposals ← providerHelpers context config.maxHelperProposals config.maxHelperMs
+  let now ← nowMs
+  let timeout := min config.maxHelperMs (deadline - now)
+  if timeout == 0 then return []
+  let proposals ← provider context config.maxHelperProposals timeout
+  -- A transport timeout is not a total-operation deadline: discard late results too.
+  if (← nowMs) >= now + timeout then return []
   return (← helperCutActions proposals).take config.maxAdmittedHelpers
 
 /-- Ask the persistent localhost rank broker to order fixed catalogue entries.
@@ -714,12 +724,13 @@ private def rememberState (limit : Nat) (table : List (String × Nat)) (node : N
     (node.fingerprint, node.cost) :: table.take (limit - 1)
 
 /-- Deterministic rank-guided depth-first search with bounded canonical-state suppression. -/
-def searchWithMetrics (config : Config) (source : ActionSource) (ranker : ActionRanker) :
+def searchWithMetrics (config : Config) (source : ActionSource) (ranker : ActionRanker)
+    (nowMs : IO Nat := IO.monoMsNow) (helperProvider : HelperProvider := providerHelpers) :
     TacticM (Option Node × SearchMetrics) := do
   let originalGoals ← getGoals
   let original ← saveState
   let root ← initialNode
-  let start ← IO.monoMsNow
+  let start ← nowMs
   let rec visit (frontier : List Node) (table : List (String × Nat))
       (nodeFuel attempts calls : Nat) (metrics : SearchMetrics) : TacticM (Option Node × SearchMetrics) := do
     match nodeFuel, frontier with
@@ -728,7 +739,7 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
       if (bestCost? table node.fingerprint).any fun cost => cost < node.cost then
         visit rest table nodeFuel attempts calls metrics
       else
-        let elapsed ← IO.monoMsNow
+        let elapsed ← nowMs
         if elapsed >= start + config.maxWallMs then return (none, { metrics with elapsedMs := elapsed - start })
         if node.goals.isEmpty then return (some node, { metrics with elapsedMs := elapsed - start })
         if node.depth >= config.maxDepth || node.cost >= config.maxCost then
@@ -753,12 +764,12 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
                 successor.goals.isEmpty && successor.depth <= config.maxDepth &&
                   successor.cost <= config.maxCost
           if let some closed := directClosed then
-            let now ← IO.monoMsNow
-            return (some closed, { metrics with
+            let now ← nowMs
+            return (if now >= deadline then none else some closed, { metrics with
               expandedNodes := metrics.expandedNodes + 1
               attemptedTransitions := metrics.attemptedTransitions + directAttempts
               elapsedMs := now - start })
-          let now ← IO.monoMsNow
+          let now ← nowMs
           if attempts + directAttempts >= config.maxHeartbeats || now >= deadline then
             return (none, { metrics with
               attemptedTransitions := metrics.attemptedTransitions + directAttempts
@@ -767,10 +778,16 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
             let context ← rankContext node
             let helperRequested := config.enableLlmHelpers &&
               helperNeedProbability context >= config.helperProbabilityThreshold
-            let helperCuts ← if helperRequested then helperActions config context else pure []
+            let helperCuts ← if helperRequested then
+              helperActions config context deadline nowMs helperProvider else pure []
             pure (helperCuts ++ actions, context, helperRequested, helperCuts.length)
+          let now ← nowMs
+          if now >= deadline then
+            return (none, { metrics with
+              helperRequests := metrics.helperRequests + if helperRequested then 1 else 0
+              attemptedTransitions := metrics.attemptedTransitions + directAttempts
+              elapsedMs := now - start })
           let (actions, calls) ← if calls >= config.maxJevCalls then pure (actions, calls) else do
-            let now ← IO.monoMsNow
             let context := { context with remainingWallMs := deadline - now }
             pure (← ranker context actions, calls + 1)
           let (successors, usedAttempts) ← expandUpTo node actions
@@ -786,7 +803,7 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
             else
               table := rememberState config.maxTranspositions table successor
               admitted := admitted.concat successor
-          let now ← IO.monoMsNow
+          let now ← nowMs
           let metrics := { metrics with
             expandedNodes := metrics.expandedNodes + 1
             jevCalls := calls
@@ -798,6 +815,7 @@ def searchWithMetrics (config : Config) (source : ActionSource) (ranker : Action
             repeatedActionFamilies := metrics.repeatedActionFamilies + familyRepeats actions
             transpositionEntries := table.length
             elapsedMs := now - start }
+          if now >= deadline then return (none, metrics)
           if let some closed := admitted.find? fun successor => successor.goals.isEmpty then
             return (some closed, metrics)
           visit (admitted ++ rest) table nodeFuel (attempts + directAttempts + usedAttempts) calls metrics

@@ -77,6 +77,38 @@ class BrokerResourceLimitTests(unittest.TestCase):
                 self.assertTrue(reply["ok"], reply)
 
 
+class BrokerDeadlineTests(unittest.TestCase):
+    def test_helper_deadline_discards_late_success_without_increasing_budget(self):
+        frame = {"operation": "helpers", "state": STATE, "max_proposals": 1, "deadline_ms": 10}
+        for elapsed, expired in ((0.009, False), (0.010, True), (0.080, True)):
+            with self.subTest(elapsed=elapsed):
+                now = [0.0]
+                helper = Mock()
+
+                def generate(state, maximum, deadline_ms):
+                    self.assertEqual((state, maximum, deadline_ms), (STATE, 1, 10))
+                    now[0] += elapsed
+                    return ([{"proposition": "P", "rationale": "useful"}], {"resolved_model": "helper"})
+
+                helper.generate.side_effect = generate
+                reply = ModelBroker(helper_client=helper, clock=lambda: now[0]).handle(frame)
+                if expired:
+                    self.assertEqual(reply, {"ok": True, "proposals": [], "source": "failed",
+                                             "error": "helper deadline exceeded"})
+                else:
+                    self.assertEqual(reply["source"], "openrouter")
+                    self.assertEqual(len(reply["proposals"]), 1)
+                helper.generate.assert_called_once()
+
+    def test_rank_deadline_uses_injected_clock(self):
+        rank = Mock()
+        rank.evaluate.return_value = {}
+        clock = Mock(side_effect=[0.0, 0.010])
+        broker = ModelBroker(rank_client=rank, clock=clock)
+        with self.assertRaisesRegex(TimeoutError, "ranking deadline exceeded"):
+            broker.handle({"operation": "rank", "request": REQUEST, "deadline_ms": 10})
+
+
 class ModelBrokerTests(unittest.TestCase):
     def setUp(self):
         self.rank = Mock()
